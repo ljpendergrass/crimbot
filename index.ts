@@ -53,6 +53,7 @@ const inviteCmd = 'invite';
 const errors: string[] = [];
 
 const randomMsgChance = 5/100
+const crimMsgChance = 1/100
 
 let fileObj: MessagesDB = {
   messages: [],
@@ -202,6 +203,8 @@ function validateMessage(message: Discord.Message): string | null {
       command = 'debug';
     } else if (split[1] === 'tts') {
       command = 'tts';
+    } else if (split[1] === 'test') {
+      command = 'test';
     }
   }
   return command;
@@ -376,12 +379,23 @@ client.on('message', message => {
     if (command === 'regen') {
       regenMarkov();
     }
+    if (command === 'test') {
+      console.log('test success');
+      // simple area to test features in here
+      message.channel.send(`I'm Crim. <:crim:733753851428995103>`);
+    }
     if (command === null) {
       let randomPick = Math.random();
       console.log('Listening...');
-      if (randomPick < randomMsgChance){
-        console.log("Feeling chatty! Speaking up...");
-        generateResponse(message);
+      if (randomPick < crimMsgChance) {
+        console.log("Crimming it up");
+        message.channel.send("I'm Crim. <:crim:733753851428995103>");
+      };
+      if (randomPick < randomMsgChance) {
+        if (!(randomPick < crimMsgChance)) {
+          console.log("Feeling chatty! Speaking up...");
+          generateResponse(message);
+        };
       };
       if (!message.author.bot) {
         const dbObj: MessageRecord = {
