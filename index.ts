@@ -52,6 +52,8 @@ let MIN_SCORE = 10;
 const inviteCmd = 'invite';
 const errors: string[] = [];
 
+const randomMsgChance = 5/100
+
 let fileObj: MessagesDB = {
   messages: [],
 };
@@ -215,7 +217,8 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
   let historyCache: MessageRecord[] = [];
   let keepGoing = true;
   let oldestMessageID;
-
+  
+  console.log('entered fetchMessages');
   while (keepGoing) {
     const messages: Discord.Collection<
       string,
@@ -374,7 +377,12 @@ client.on('message', message => {
       regenMarkov();
     }
     if (command === null) {
+      let randomPick = Math.random();
       console.log('Listening...');
+      if (randomPick < randomMsgChance){
+        console.log("Feeling chatty! Speaking up...");
+        generateResponse(message);
+      };
       if (!message.author.bot) {
         const dbObj: MessageRecord = {
           string: message.content,
