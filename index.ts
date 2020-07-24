@@ -44,10 +44,10 @@ const client = new Discord.Client();
 const PAGE_SIZE = 100;
 // let guilds = [];
 // let connected = -1;
-let GAME = '!mark help';
-let PREFIX = '!mark';
+let GAME = '!crim help';
+let PREFIX = '!crim';
 let STATE_SIZE = 2; // Value of 1 to 3, based on corpus quality
-let MAX_TRIES = 1000;
+let MAX_TRIES = 2000;
 let MIN_SCORE = 10;
 const inviteCmd = 'invite';
 const errors: string[] = [];
@@ -203,6 +203,8 @@ function validateMessage(message: Discord.Message): string | null {
       command = 'debug';
     } else if (split[1] === 'tts') {
       command = 'tts';
+    } else if (split[1] === 'force') {
+      command = 'force';
     } else if (split[1] === 'test') {
       command = 'test';
     }
@@ -350,7 +352,7 @@ function generateResponseForce(message: Discord.Message, debug = false, tts = me
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    message.channel.send(`Hmm, can't think of anything involving ${force} right now`);
+    message.channel.send(`<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`);
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
@@ -385,26 +387,26 @@ client.on('message', message => {
         .setThumbnail(client.user.avatarURL)
         .setDescription('A Markov chain chatbot that speaks based on previous chat input.')
         .addField(
-          '!mark',
+          '!crim',
           'Generates a sentence to say based on the chat database. Send your ' +
             'message as TTS to recieve it as TTS.'
         )
         .addField(
-          '!mark train',
+          '!crim train',
           'Fetches the maximum amount of previous messages in the current ' +
             'text channel, adds it to the database, and regenerates the corpus. Takes some time.'
         )
         .addField(
-          '!mark regen',
+          '!crim regen',
           'Manually regenerates the corpus to add recent chat info. Run ' +
             'this before shutting down to avoid any data loss. This automatically runs at midnight.'
         )
         .addField(
-          '!mark invite',
+          '!crim invite',
           "Don't invite this bot to other servers. The database is shared " +
             'between all servers and text channels.'
         )
-        .addField('!mark debug', 'Runs the !mark command and follows it up with debug info.')
+        .addField('!crim debug', 'Runs the !crim command and follows it up with debug info.')
         .setFooter(`Markov Discord v${version} by Charlie Laabs`);
       message.channel.send(richem).catch(() => {
         message.author.send(richem);
@@ -433,6 +435,10 @@ client.on('message', message => {
       regenMarkov();
     }
     if (command === 'test') {
+      console.log('test success');
+      // simple area to test features in here
+    }
+    if (command === 'force') {
       console.log('test success');
       // simple area to test features in here
       const messageText = message.content.toLowerCase();
