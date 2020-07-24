@@ -200,7 +200,7 @@ function randomHours() {
 
 function crimIsLonely(nextTimeout: number) {
   if (sendLonely) {
-    const modifiedTimeout = nextTimeout + 3;
+    const modifiedTimeout = nextTimeout + hoursToTimeoutInMs(3);
 
     console.log('Crim is lonely...');
     console.log(`Next message will be in ${modifiedTimeout}ms`);
