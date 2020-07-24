@@ -203,7 +203,7 @@ function crimIsLonely(nextTimeout: number) {
     const modifiedTimeout = nextTimeout + hoursToTimeoutInMs(3);
 
     console.log('Crim is lonely...');
-    console.log(`Next message will be in ${modifiedTimeout}ms`);
+    console.log(`Next unprompted message will be in ${modifiedTimeout}ms`);
 
     const messageSend =
       crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
