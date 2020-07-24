@@ -111,8 +111,8 @@ function regenMarkov(): void {
   // console.log("MessageCache", messageCache)
   markovDB = fileObj.messages;
   markovDB = uniqueBy<MessageRecord>(markovDB.concat(messageCache), 'id');
-  deletionCache.forEach(id => {
-    const removeIndex = markovDB.map(item => item.id).indexOf(id);
+  deletionCache.forEach((id) => {
+    const removeIndex = markovDB.map((item) => item.id).indexOf(id);
     // console.log('Remove Index:', removeIndex)
     markovDB.splice(removeIndex, 1);
   });
@@ -182,6 +182,31 @@ function isModerator(member: Discord.GuildMember): boolean {
   );
 }
 
+function hoursToTimeoutInMs(hours) {
+  return hours * 60 * 1000;
+}
+
+function randomHours() {
+  let random = Math.floor(Math.random() * Math.floor(12));
+  if (random === 0) {
+    return 10;
+  } else {
+    return random;
+  }
+}
+
+function crimIsLonely(nextTimeout) {
+  console.log('Crim is lonely...');
+  const messageSend =
+    crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
+  const channel = client.channels.cache.find((ch) => ch.name === 'crim-posting');
+  if (!channel) return;
+  setTimeout(() => {
+    channel.send(messageSend);
+  }, nextTimeout);
+  crimIsLonely(hoursToTimeoutInMs(randomHours()));
+}
+
 /**
  * Reads a new message and checks if and which command it is.
  * @param {Message} message Message to be interpreted as a command
@@ -238,8 +263,8 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
       limit: PAGE_SIZE,
     });
     const nonBotMessageFormatted = messages
-      .filter(elem => !elem.author.bot)
-      .map(elem => {
+      .filter((elem) => !elem.author.bot)
+      .map((elem) => {
         const dbObj: MessageRecord = {
           string: elem.content,
           id: elem.id,
@@ -288,8 +313,8 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
     console.log('Generated Result:', myResult);
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentRefs = myResult.refs
-      .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
-      .map(ref => ref.attachment as string);
+      .filter((ref) => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
+      .map((ref) => ref.attachment as string);
     if (attachmentRefs.length > 0) {
       const randomRefAttachment = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
       messageOpts.files = [randomRefAttachment];
@@ -345,8 +370,8 @@ function generateResponseForce(
     console.log('Generated Result:', myResult);
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentRefs = myResult.refs
-      .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
-      .map(ref => ref.attachment as string);
+      .filter((ref) => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
+      .map((ref) => ref.attachment as string);
     if (attachmentRefs.length > 0) {
       const randomRefAttachment = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
       messageOpts.files = [randomRefAttachment];
@@ -380,18 +405,18 @@ client.on('ready', () => {
   regenMarkov();
 });
 
-client.on('error', err => {
+client.on('error', (err) => {
   const errText = `ERROR: ${err.name} - ${err.message}`;
   console.log(errText);
   errors.push(errText);
-  fs.writeFile('./config/error.json', JSON.stringify(errors), fsErr => {
+  fs.writeFile('./config/error.json', JSON.stringify(errors), (fsErr) => {
     if (fsErr) {
       console.log(`error writing to error file: ${fsErr.message}`);
     }
   });
 });
 
-client.on('message', message => {
+client.on('message', (message) => {
   if (message.guild) {
     const command = validateMessage(message);
     if (command === 'help') {
@@ -507,7 +532,7 @@ client.on('message', message => {
   }
 });
 
-client.on('messageDelete', message => {
+client.on('messageDelete', (message) => {
   // console.log('Adding message ' + message.id + ' to deletion cache.')
   deletionCache.push(message.id);
   console.log('deletionCache:', deletionCache);
@@ -516,20 +541,4 @@ client.on('messageDelete', message => {
 loadConfig();
 schedule.scheduleJob('0 4 * * *', () => regenMarkov());
 
-function hoursToTimeoutInMs(hours) {
-  return hours * 60 * 1000;
-}
-
-function crimIsLonely(nextTimeout) {
-  console.log('Crim is lonely...');
-  const messageSend =
-    crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
-  // Send the message to a designated channel on a server:
-  const channel = client.channels.cache.find(ch => ch.name === 'crim-posting');
-  // Do nothing if the channel wasn't found on this server
-  if (!channel) return;
-  // Send the message, mentioning the member
-  channel.send(messageSend);
-}
-
-setInterval(crimIsLonely(), hoursToTimeoutInMs(3));
+setInterval(crimIsLonely(), 200);
