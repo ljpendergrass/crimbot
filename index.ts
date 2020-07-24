@@ -53,8 +53,9 @@ const inviteCmd = 'invite';
 const errors: string[] = [];
 const suppressForceFailureMessages = false;
 
-const randomMsgChance = 5/100
-const crimMsgChance = 1/100
+const randomMsgChance = 5 / 100;
+const crimMsgChance = 1 / 100;
+const specificMsgChance = 1 / 100;
 
 let fileObj: MessagesDB = {
   messages: [],
@@ -66,6 +67,8 @@ let deletionCache: string[] = [];
 let markovOpts: MarkovConstructorOptions = {
   stateSize: STATE_SIZE,
 };
+
+const crimMessages = JSON.parse(fs.readFileSync('config/crim-messages.json', 'utf8'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function uniqueBy<Record extends { [key: string]: any }>(
@@ -223,7 +226,7 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
   let historyCache: MessageRecord[] = [];
   let keepGoing = true;
   let oldestMessageID;
-  
+
   console.log('entered fetchMessages');
   while (keepGoing) {
     const messages: Discord.Collection<
@@ -317,13 +320,18 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
  * invoking message.
  * @param {String} force Try to force the message to include this string
  */
-function generateResponseForce(message: Discord.Message, debug = false, tts = message.tts, force = ' '): void {
+function generateResponseForce(
+  message: Discord.Message,
+  debug = false,
+  tts = message.tts,
+  force = ' '
+): void {
   console.log('Responding...');
   const options: MarkovGenerateOptions = {
     filter: (result): boolean => {
-      return result.score >= MIN_SCORE && result.string.toLowerCase().includes(force)
+      return result.score >= MIN_SCORE && result.string.toLowerCase().includes(force);
     },
-    maxTries: MAX_TRIES*4,
+    maxTries: MAX_TRIES * 4,
   };
 
   const fsMarkov = new Markov([''], markovOpts);
@@ -353,7 +361,11 @@ function generateResponseForce(message: Discord.Message, debug = false, tts = me
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    suppressForceFailureMessages ? null : message.channel.send(`<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`);
+    suppressForceFailureMessages
+      ? null
+      : message.channel.send(
+          `<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`
+        );
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
@@ -445,8 +457,8 @@ client.on('message', message => {
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
       let force = ' ';
-      split[2] ? force = split[2].trim() : null;
-      console.log("Force value: ", force);
+      split[2] ? (force = split[2].trim()) : null;
+      console.log('Force value: ', force);
       generateResponseForce(message, false, false, force);
     }
     if (command === null) {
@@ -454,15 +466,17 @@ client.on('message', message => {
       console.log('Listening...');
       if (!message.author.bot) {
         if (randomPick < crimMsgChance) {
-          console.log("Crimming it up");
-          message.channel.send("I'm Crim. <:crim:733753851428995103>");
-        };
+          console.log('Crimming it up');
+          const messageSend =
+            crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
+          message.channel.send(messageSend);
+        }
         if (randomPick < randomMsgChance) {
           if (!(randomPick < crimMsgChance)) {
-            console.log("Feeling chatty! Speaking up...");
+            console.log('Feeling chatty! Speaking up...');
             generateResponse(message);
-          };
-        };
+          }
+        }
 
         const dbObj: MessageRecord = {
           string: message.content,
@@ -501,3 +515,21 @@ client.on('messageDelete', message => {
 
 loadConfig();
 schedule.scheduleJob('0 4 * * *', () => regenMarkov());
+
+function hoursToTimeoutInMs(hours) {
+  return hours * 60 * 1000;
+}
+
+function crimIsLonely(nextTimeout) {
+  console.log('Crim is lonely...');
+  const messageSend =
+    crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
+  // Send the message to a designated channel on a server:
+  const channel = client.channels.cache.find(ch => ch.name === 'crim-posting');
+  // Do nothing if the channel wasn't found on this server
+  if (!channel) return;
+  // Send the message, mentioning the member
+  channel.send(messageSend);
+}
+
+setInterval(crimIsLonely(), hoursToTimeoutInMs(3));
