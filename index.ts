@@ -49,7 +49,9 @@ let PREFIX = '!crim';
 let STATE_SIZE = 2; // Value of 1 to 3, based on corpus quality
 let MAX_TRIES = 2000;
 let MIN_SCORE = 10;
-let channelSend = undefined;
+let channelSend: Discord.TextChannel;
+let sendLonely = true;
+
 const inviteCmd = 'invite';
 const errors: string[] = [];
 const suppressForceFailureMessages = false;
@@ -197,15 +199,23 @@ function randomHours() {
 }
 
 function crimIsLonely(nextTimeout: number) {
-  const modifiedTimeout = nextTimeout + 3;
-  console.log('Crim is lonely...');
-  console.log(`Next message will be in ${modifiedTimeout}ms`);
-  const messageSend =
-    crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
-  setTimeout(() => {
-    channelSend.send(messageSend);
-    crimIsLonely(hoursToTimeoutInMs(randomHours()));
-  }, nextTimeout);
+  if (sendLonely) {
+    const modifiedTimeout = nextTimeout + 3;
+
+    console.log('Crim is lonely...');
+    console.log(`Next message will be in ${modifiedTimeout}ms`);
+
+    const messageSend =
+      crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
+
+    setTimeout(() => {
+      channelSend.send(messageSend);
+      return crimIsLonely(hoursToTimeoutInMs(randomHours()));
+    }, modifiedTimeout);
+  } else {
+    console.log('Exiting lonely loop.');
+    return;
+  }
 }
 
 /**
