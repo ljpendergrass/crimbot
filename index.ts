@@ -458,7 +458,7 @@ client.on('message', message => {
           'Force the bot to try to come up with a sentence involving parameter.'
         )
         .addField('!crim debug', 'Runs the !crim command and follows it up with debug info.')
-        .setFooter(`Markov Discord v${version} by Charlie Laabs`);
+        .setFooter(`Markov Discord v${version} by Charlie Laabs modified by Plague Hut & Friends`);
       message.channel.send(richem).catch(() => {
         message.author.send(richem);
       });
