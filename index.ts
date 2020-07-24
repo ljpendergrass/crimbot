@@ -226,27 +226,23 @@ function crimIsLonely(nextTimeout: number) {
 function validateMessage(message: Discord.Message): string | null {
   const messageText = message.content.toLowerCase();
   let command = null;
+  const allowableCommands = new Set([
+    'train',
+    'help',
+    'regen',
+    'invite',
+    'debug',
+    'tts',
+    'force',
+    'test',
+  ]);
   const thisPrefix = messageText.substring(0, PREFIX.length);
   if (thisPrefix === PREFIX) {
     const split = messageText.split(' ');
     if (split[0] === PREFIX && split.length === 1) {
       command = 'respond';
-    } else if (split[1] === 'train') {
-      command = 'train';
-    } else if (split[1] === 'help') {
-      command = 'help';
-    } else if (split[1] === 'regen') {
-      command = 'regen';
-    } else if (split[1] === 'invite') {
-      command = 'invite';
-    } else if (split[1] === 'debug') {
-      command = 'debug';
-    } else if (split[1] === 'tts') {
-      command = 'tts';
-    } else if (split[1] === 'force') {
-      command = 'force';
-    } else if (split[1] === 'test') {
-      command = 'test';
+    } else if (allowableCommands.has(split[1])) {
+      command = split[1];
     }
   }
   return command;
