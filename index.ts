@@ -356,15 +356,28 @@ function generateResponseForce(
   message: Discord.Message,
   debug = false,
   tts = message.tts,
-  force = ' '
+  force = ' ',
+  exact = false
 ): void {
   console.log('Responding...');
-  const options: MarkovGenerateOptions = {
+  let options: MarkovGenerateOptions = {
     filter: (result): boolean => {
       return result.score >= MIN_SCORE && result.string.toLowerCase().includes(force);
     },
     maxTries: MAX_TRIES * 4,
   };
+  if (exact) {
+    console.log('trying exact');
+    const regexConstruct = '\\s' + force + '(?![\\w\\d])';
+    // console.log('Building regex: ', regexConstruct);
+    const forceRegex = new RegExp(regexConstruct, 'gi');
+    options = {
+      filter: (result): boolean => {
+        return result.score >= MIN_SCORE && forceRegex.test(result.string);
+      },
+      maxTries: MAX_TRIES * 4,
+    } as MarkovGenerateOptions;
+  }
 
   const fsMarkov = new Markov([''], markovOpts);
   const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
@@ -490,14 +503,12 @@ client.on('message', message => {
       // simple area to test features in here
     }
     if (command === 'force') {
-      console.log('test success');
-      // simple area to test features in here
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
       let force = ' ';
       split[2] ? (force = split[2].trim()) : null;
       console.log('Force value: ', force);
-      generateResponseForce(message, false, false, force);
+      generateResponseForce(message, false, false, force, true);
     }
     if (command === null) {
       let randomPick = Math.random();
