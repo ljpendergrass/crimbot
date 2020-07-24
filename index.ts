@@ -306,6 +306,59 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   }
 }
 
+/**
+ * General Markov-chain forced inclusion response function
+ * @param {Message} message The message that invoked the action, used for channel info.
+ * @param {Boolean} debug Sends debug info as a message if true.
+ * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
+ * invoking message.
+ * @param {String} force Try to force the message to include this string
+ */
+function generateResponseForce(message: Discord.Message, debug = false, tts = message.tts, force = ' '): void {
+  console.log('Responding...');
+  const options: MarkovGenerateOptions = {
+    filter: (result): boolean => {
+      return result.score >= MIN_SCORE && result.string.toLowerCase().includes(force)
+    },
+    maxTries: MAX_TRIES*4,
+  };
+
+  const fsMarkov = new Markov([''], markovOpts);
+  const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
+  fsMarkov.corpus = markovFile.corpus;
+  fsMarkov.startWords = markovFile.startWords;
+  fsMarkov.endWords = markovFile.endWords;
+
+  try {
+    const myResult = fsMarkov.generate(options) as MarkbotMarkovResult;
+    console.log('Generated Result:', myResult);
+    const messageOpts: Discord.MessageOptions = { tts };
+    const attachmentRefs = myResult.refs
+      .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
+      .map(ref => ref.attachment as string);
+    if (attachmentRefs.length > 0) {
+      const randomRefAttachment = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
+      messageOpts.files = [randomRefAttachment];
+    } else {
+      const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
+      if (randomMessage.attachment) {
+        messageOpts.files = [{ attachment: randomMessage.attachment }];
+      }
+    }
+
+    myResult.string = myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
+    message.channel.send(myResult.string, messageOpts);
+    if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
+  } catch (err) {
+    message.channel.send(`Hmm, can't think of anything involving ${force} right now`);
+    console.log(err);
+    if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
+    if (err.message.includes('Cannot build sentence with current corpus')) {
+      console.log('Not enough chat data for a response.');
+    }
+  }
+}
+
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs');
   client.user.setActivity(GAME);
@@ -382,22 +435,28 @@ client.on('message', message => {
     if (command === 'test') {
       console.log('test success');
       // simple area to test features in here
-      message.channel.send(`I'm Crim. <:crim:733753851428995103>`);
+      const messageText = message.content.toLowerCase();
+      const split = messageText.split(' ');
+      let force = ' ';
+      split[2] ? force = split[2].trim() : null;
+      console.log("Force value: ", force);
+      generateResponseForce(message, false, false, force);
     }
     if (command === null) {
       let randomPick = Math.random();
       console.log('Listening...');
-      if (randomPick < crimMsgChance) {
-        console.log("Crimming it up");
-        message.channel.send("I'm Crim. <:crim:733753851428995103>");
-      };
-      if (randomPick < randomMsgChance) {
-        if (!(randomPick < crimMsgChance)) {
-          console.log("Feeling chatty! Speaking up...");
-          generateResponse(message);
-        };
-      };
       if (!message.author.bot) {
+        if (randomPick < crimMsgChance) {
+          console.log("Crimming it up");
+          message.channel.send("I'm Crim. <:crim:733753851428995103>");
+        };
+        if (randomPick < randomMsgChance) {
+          if (!(randomPick < crimMsgChance)) {
+            console.log("Feeling chatty! Speaking up...");
+            generateResponse(message);
+          };
+        };
+
         const dbObj: MessageRecord = {
           string: message.content,
           id: message.id,
