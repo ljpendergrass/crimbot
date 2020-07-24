@@ -446,6 +446,10 @@ client.on('message', message => {
           "Don't invite this bot to other servers. The database is shared " +
             'between all servers and text channels.'
         )
+        .addField(
+          '!crim force [parameter]',
+          'Force the bot to try to come up with a sentence involving parameter.'
+        )
         .addField('!crim debug', 'Runs the !crim command and follows it up with debug info.')
         .setFooter(`Markov Discord v${version} by Charlie Laabs`);
       message.channel.send(richem).catch(() => {
