@@ -184,7 +184,7 @@ function isModerator(member: Discord.GuildMember): boolean {
 }
 
 function hoursToTimeoutInMs(hours: number) {
-  return hours * 60 * 1000;
+  return hours * 60 * 60 * 1000;
 }
 
 function randomHours() {
