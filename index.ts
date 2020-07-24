@@ -58,7 +58,6 @@ const suppressForceFailureMessages = false;
 
 const randomMsgChance = 5 / 100;
 const crimMsgChance = 1 / 100;
-const specificMsgChance = 1 / 100;
 
 let fileObj: MessagesDB = {
   messages: [],
