@@ -51,6 +51,7 @@ let MAX_TRIES = 2000;
 let MIN_SCORE = 10;
 const inviteCmd = 'invite';
 const errors: string[] = [];
+const suppressForceFailureMessages = false;
 
 const randomMsgChance = 5/100
 const crimMsgChance = 1/100
@@ -352,7 +353,7 @@ function generateResponseForce(message: Discord.Message, debug = false, tts = me
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    message.channel.send(`<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`);
+    suppressForceFailureMessages ? null : message.channel.send(`<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`);
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
