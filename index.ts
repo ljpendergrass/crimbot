@@ -12,6 +12,8 @@ import Markov, {
 
 import * as schedule from 'node-schedule';
 
+import * as common from 'common-words';
+
 interface MessageRecord {
   id: string;
   string: string;
