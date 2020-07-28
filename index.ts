@@ -345,8 +345,8 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   }
 }
 
-function removeCommonWords(words, common) {
-  common.forEach(function(obj) {
+function removeCommonWords(words:Array<string>, common:any) {
+  common.forEach(function(obj: object) {
     let word = obj.word;
     while (words.indexOf(word) !== -1) {
       words.splice(words.indexOf(word), 1);
