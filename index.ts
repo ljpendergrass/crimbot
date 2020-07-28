@@ -345,6 +345,16 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   }
 }
 
+function removeCommonWords(words, common) {
+  common.forEach(function(obj) {
+    let word = obj.word;
+    while (words.indexOf(word) !== -1) {
+      words.splice(words.indexOf(word), 1);
+    }
+  });
+  return words;
+}
+
 /**
  * General Markov-chain forced inclusion response function
  * @param {Message} message The message that invoked the action, used for channel info.
