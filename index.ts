@@ -419,9 +419,7 @@ function generateResponseForce(
   } catch (err) {
     suppressForceFailureMessages
       ? null
-      : message.channel.send(
-          `<:thonk:688964665531039784> *can't think of anything involving ${force} right now*`
-        );
+      : message.react('688964665531039784');
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
