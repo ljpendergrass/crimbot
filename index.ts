@@ -408,9 +408,7 @@ function generateResponseForce(
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    suppressForceFailureMessages
-      ? null
-      : message.react('688964665531039784');
+    suppressForceFailureMessages ? null : message.react('688964665531039784');
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
