@@ -361,34 +361,25 @@ function removeCommonWords(words, common) {
  * @param {Boolean} debug Sends debug info as a message if true.
  * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
  * invoking message.
- * @param {String} force Try to force the message to include this string
  */
 function generateResponseForce(
   message: Discord.Message,
   debug = false,
   tts = message.tts,
-  force = ' ',
-  exact = false
+  force = ' '
 ): void {
-  console.log('Responding...');
+  console.log('Forcing response...');
+  const substrings = removeCommonWords(force.split(' '), common);
+  console.log("'Topics': ", substrings);
   let options: MarkovGenerateOptions = {
-    filter: (result): boolean => {
-      return result.score >= MIN_SCORE && result.string.toLowerCase().includes(force);
+    filter: result => {
+      return (
+        result.score >= MIN_SCORE &&
+        substrings.some(word => result.string.split(' ').includes(word))
+      );
     },
     maxTries: MAX_TRIES * 4,
   };
-  if (exact) {
-    console.log('trying exact');
-    const regexConstruct = '\\s' + force + '(?![\\w\\d])';
-    // console.log('Building regex: ', regexConstruct);
-    const forceRegex = new RegExp(regexConstruct, 'gi');
-    options = {
-      filter: (result): boolean => {
-        return result.score >= MIN_SCORE && forceRegex.test(result.string);
-      },
-      maxTries: MAX_TRIES * 4,
-    } as MarkovGenerateOptions;
-  }
 
   const fsMarkov = new Markov([''], markovOpts);
   const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
@@ -515,9 +506,8 @@ client.on('message', message => {
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
       let force = ' ';
-      split[2] ? (force = split[2].trim()) : null;
-      console.log('Force value: ', force);
-      generateResponseForce(message, false, false, force, true);
+      split[2] ? (force = messageText.substring(12)) : ' ';
+      generateResponseForce(message, false, false, force);
     }
     if (command === null) {
       let randomPick = Math.random();
@@ -532,7 +522,11 @@ client.on('message', message => {
         if (randomPick < randomMsgChance) {
           if (!(randomPick < crimMsgChance)) {
             console.log('Feeling chatty! Speaking up...');
-            generateResponse(message);
+            const messageText = message.content.toLowerCase();
+            const split = messageText.split(' ');
+            let force = ' ';
+            split[2] ? (force = messageText.substring(12)) : ' ';
+            generateResponseForce(message, false, false, force);
           }
         }
 
