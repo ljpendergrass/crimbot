@@ -35,6 +35,13 @@ interface MarkbotConfig {
   prefix?: string;
   game?: string;
   token?: string;
+  suppressRespCat?: string;
+  increaseFreqCat?: string;
+}
+
+interface ResponseSettings {
+  allowedToRespond?: boolean;
+  increasedChance?: boolean;
 }
 
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
@@ -53,12 +60,15 @@ let MAX_TRIES = 2000;
 let MIN_SCORE = 10;
 let channelSend: Discord.TextChannel;
 let sendLonely = true;
+let SUPPRESS_RESP_CAT = 'BOT-FREE-ZONE';
+let INCREASE_FREQ_CAT = 'Events';
 
 const inviteCmd = 'invite';
 const errors: string[] = [];
 const suppressForceFailureMessages = false;
 
 const randomMsgChance = 5 / 100;
+const increasedMsgChance = 10 / 100;
 const crimMsgChance = 1 / 100;
 
 let fileObj: MessagesDB = {
@@ -157,6 +167,8 @@ function loadConfig(): void {
     STATE_SIZE = cfg.stateSize || STATE_SIZE;
     MIN_SCORE = cfg.minScore || MIN_SCORE;
     MAX_TRIES = cfg.maxTries || MAX_TRIES;
+    SUPPRESS_RESP_CAT = cfg.suppressRespCat || SUPPRESS_RESP_CAT;
+    INCREASE_FREQ_CAT = cfg.increaseFreqCat || INCREASE_FREQ_CAT;
   } catch (e) {
     console.warn('Failed to read config.json.');
     token = process.env.TOKEN || token;
@@ -247,6 +259,24 @@ function validateMessage(message: Discord.Message): string | null {
     }
   }
   return command;
+}
+
+function getResponseSettings(message: Discord.Message): ResponseSettings {
+  const channel = message.channel as Discord.TextChannel;
+  const parentName = channel.parent.name;
+  let settings: ResponseSettings = {
+    allowedToRespond: true,
+    increasedChance: false,
+  };
+
+  if (parentName !== SUPPRESS_RESP_CAT && parentName !== INCREASE_FREQ_CAT) {
+    return settings;
+  } else {
+    parentName === SUPPRESS_RESP_CAT ? (settings.allowedToRespond = false) : null;
+    parentName === INCREASE_FREQ_CAT ? (settings.increasedChance = true) : null;
+
+    return settings;
+  }
 }
 
 /**
@@ -439,6 +469,7 @@ client.on('error', err => {
 client.on('message', message => {
   if (message.guild) {
     const command = validateMessage(message);
+    const responseSettings = getResponseSettings(message);
     if (command === 'help') {
       const richem = new Discord.RichEmbed()
         .setAuthor(client.user.username, client.user.avatarURL)
@@ -509,22 +540,24 @@ client.on('message', message => {
     }
     if (command === null) {
       let randomPick = Math.random();
-      console.log('Listening...');
+      console.log('Listening...', responseSettings);
       if (!message.author.bot) {
+        const chanceEval = responseSettings.increasedChance ? increasedMsgChance : randomMsgChance;
         if (randomPick < crimMsgChance) {
           console.log('Crimming it up');
           const messageSend =
             crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
-          message.channel.send(messageSend);
+          responseSettings.allowedToRespond
+            ? message.channel.send(messageSend)
+            : console.log('Suppressed in this category.');
         }
-        if (randomPick < randomMsgChance) {
+        if (randomPick < chanceEval) {
           if (!(randomPick < crimMsgChance)) {
             console.log('Feeling chatty! Speaking up...');
             const messageText = message.content.toLowerCase();
-            const split = messageText.split(' ');
-            let force = ' ';
-            split[2] ? (force = messageText.substring(12)) : ' ';
-            generateResponseForce(message, false, false, force);
+            responseSettings.allowedToRespond
+              ? generateResponseForce(message, false, false, messageText)
+              : console.log('Suppressed in this category.');
           }
         }
 
