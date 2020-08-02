@@ -363,7 +363,8 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
       }
     }
 
-    myResult.string = myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
+    myResult.string = myResult.string.replace(/@everyone/g, 'at everyone');
+    myResult.string = myResult.string.replace(/@here/g, 'at here');
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
@@ -434,7 +435,8 @@ function generateResponseForce(
       }
     }
 
-    myResult.string = myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
+    myResult.string = myResult.string.replace(/@everyone/g, 'at everyone');
+    myResult.string = myResult.string.replace(/@here/g, 'at here');
     message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
