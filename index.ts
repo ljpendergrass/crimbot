@@ -335,7 +335,7 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   console.log('Responding...');
   const options: MarkovGenerateOptions = {
     filter: (result): boolean => {
-      return result.score >= MIN_SCORE;
+      return result.score >= MIN_SCORE && result.refs.length >= 2;
     },
     maxTries: MAX_TRIES,
   };
@@ -406,7 +406,8 @@ function generateResponseForce(
     filter: result => {
       return (
         result.score >= MIN_SCORE &&
-        substrings.some(word => result.string.split(' ').includes(word))
+        substrings.some(word => result.string.split(' ').includes(word)) &&
+        result.refs.length >= 2
       );
     },
     maxTries: MAX_TRIES * 4,
