@@ -37,6 +37,7 @@ interface MarkbotConfig {
   token?: string;
   suppressRespCat?: string;
   increaseFreqCat?: string;
+  messagePrefix?: string;
 }
 
 interface ResponseSettings {
@@ -50,6 +51,7 @@ const client = new Discord.Client();
 // const ZEROWIDTH_SPACE = String.fromCharCode(parseInt('200B', 16));
 // const MAXMESSAGELENGTH = 2000;
 
+// defaults
 const PAGE_SIZE = 100;
 // let guilds = [];
 // let connected = -1;
@@ -62,6 +64,7 @@ let channelSend: Discord.TextChannel;
 let sendLonely = true;
 let SUPPRESS_RESP_CAT = 'BOT-FREE-ZONE';
 let INCREASE_FREQ_CAT = 'Events';
+let MESSAGE_PREFIX = '<:crim:733753851428995103>';
 
 const inviteCmd = 'invite';
 const errors: string[] = [];
@@ -83,6 +86,10 @@ let markovOpts: MarkovConstructorOptions = {
 };
 
 const crimMessages = JSON.parse(fs.readFileSync('config/crim-messages.json', 'utf8'));
+
+function prefixMessage(message: string){
+  return MESSAGE_PREFIX.concat(' ', message);
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function uniqueBy<Record extends { [key: string]: any }>(
@@ -169,6 +176,7 @@ function loadConfig(): void {
     MAX_TRIES = cfg.maxTries || MAX_TRIES;
     SUPPRESS_RESP_CAT = cfg.suppressRespCat || SUPPRESS_RESP_CAT;
     INCREASE_FREQ_CAT = cfg.increaseFreqCat || INCREASE_FREQ_CAT;
+    MESSAGE_PREFIX = cfg.messagePrefix || MESSAGE_PREFIX;
   } catch (e) {
     console.warn('Failed to read config.json.');
     token = process.env.TOKEN || token;
@@ -365,7 +373,7 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
 
     myResult.string = myResult.string.replace(/@everyone/g, 'at everyone');
     myResult.string = myResult.string.replace(/@here/g, 'at here');
-    message.channel.send(myResult.string, messageOpts);
+    message.channel.send(prefixMessage(myResult.string), messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
     console.log(err);
@@ -438,7 +446,7 @@ function generateResponseForce(
 
     myResult.string = myResult.string.replace(/@everyone/g, 'at everyone');
     myResult.string = myResult.string.replace(/@here/g, 'at here');
-    message.channel.send(myResult.string, messageOpts);
+    message.channel.send(prefixMessage(myResult.string), messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
     suppressForceFailureMessages ? null : message.react('688964665531039784');
@@ -551,7 +559,7 @@ client.on('message', message => {
           const messageSend =
             crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
           responseSettings.allowedToRespond
-            ? message.channel.send(messageSend)
+            ? message.channel.send(prefixMessage(messageSend))
             : console.log('Suppressed in this category.');
         }
         if (randomPick < chanceEval) {
