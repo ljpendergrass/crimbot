@@ -67,9 +67,9 @@ const inviteCmd = 'invite';
 const errors: string[] = [];
 const suppressForceFailureMessages = false;
 
-const randomMsgChance = 5 / 100;
-const increasedMsgChance = 10 / 100;
-const crimMsgChance = 1 / 100;
+const randomMsgChance = 4 / 100;
+const increasedMsgChance = 15 / 100;
+const crimMsgChance = 1 / 200;
 
 let fileObj: MessagesDB = {
   messages: [],
@@ -213,7 +213,7 @@ function randomHours() {
 
 function crimIsLonely(nextTimeout: number) {
   if (sendLonely) {
-    const modifiedTimeout = nextTimeout + hoursToTimeoutInMs(3);
+    const modifiedTimeout = nextTimeout + hoursToTimeoutInMs(5);
 
     console.log('Crim is lonely...');
     console.log(`Next unprompted message will be in ${modifiedTimeout}ms`);
