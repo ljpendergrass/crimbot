@@ -13,66 +13,17 @@ import Markov, {
 import * as schedule from 'node-schedule';
 
 import * as common from 'common-words';
-
-interface MessageRecord {
-  id: string;
-  string: string;
-  attachment?: string;
-}
-
-interface MarkbotMarkovResult extends MarkovResult {
-  refs: Array<MessageRecord>;
-}
-
-interface MessagesDB {
-  messages: MessageRecord[];
-}
-
-interface MarkbotConfig {
-  stateSize?: number;
-  minScore?: number;
-  maxTries?: number;
-  prefix?: string;
-  game?: string;
-  token?: string;
-  suppressRespCat?: string;
-  increaseFreqCat?: string;
-  messagePrefix?: string;
-}
-
-interface ResponseSettings {
-  allowedToRespond?: boolean;
-  increasedChance?: boolean;
-}
+import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
+import { config } from './lib/config';
+import { prefixMessage } from './lib/util';
 
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
 
-const client = new Discord.Client();
-// const ZEROWIDTH_SPACE = String.fromCharCode(parseInt('200B', 16));
-// const MAXMESSAGELENGTH = 2000;
+export const client = new Discord.Client();
 
-// defaults
-const PAGE_SIZE = 100;
-// let guilds = [];
-// let connected = -1;
-let GAME = '!crim help';
-let PREFIX = '!crim';
-let STATE_SIZE = 2; // Value of 1 to 3, based on corpus quality
-let MAX_TRIES = 2000;
-let MIN_SCORE = 10;
 let channelSend: Discord.TextChannel;
-let sendLonely = true;
-let SUPPRESS_RESP_CAT = 'BOT-FREE-ZONE';
-let INCREASE_FREQ_CAT = 'Events';
-let MESSAGE_PREFIX = '<:crim:733753851428995103>';
-
-const inviteCmd = 'invite';
 const errors: string[] = [];
-const suppressForceFailureMessages = false;
-
-const randomMsgChance = 4 / 100;
-const increasedMsgChance = 15 / 100;
-const crimMsgChance = 1 / 200;
+let sendLonely = true;
 
 let fileObj: MessagesDB = {
   messages: [],
@@ -82,14 +33,10 @@ let markovDB: MessageRecord[] = [];
 let messageCache: MessageRecord[] = [];
 let deletionCache: string[] = [];
 let markovOpts: MarkovConstructorOptions = {
-  stateSize: STATE_SIZE,
+  stateSize: config.stateSize,
 };
 
 const crimMessages = JSON.parse(fs.readFileSync('config/crim-messages.json', 'utf8'));
-
-function prefixMessage(message: string){
-  return MESSAGE_PREFIX.concat(' ', message);
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function uniqueBy<Record extends { [key: string]: any }>(
@@ -151,47 +98,6 @@ function regenMarkov(): void {
 }
 
 /**
- * Loads the config settings from disk
- */
-function loadConfig(): void {
-  // Move config if in legacy location
-  if (fs.existsSync('./config.json')) {
-    console.log('Copying config.json to new location in ./config');
-    fs.renameSync('./config.json', './config/config.json');
-  }
-
-  if (fs.existsSync('./markovDB.json')) {
-    console.log('Copying markovDB.json to new location in ./config');
-    fs.renameSync('./markovDB.json', './config/markovDB.json');
-  }
-
-  let token = 'missing';
-  try {
-    const cfg: MarkbotConfig = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
-    PREFIX = cfg.prefix || '!mark';
-    GAME = cfg.game || '!mark help';
-    token = cfg.token || process.env.TOKEN || token;
-    STATE_SIZE = cfg.stateSize || STATE_SIZE;
-    MIN_SCORE = cfg.minScore || MIN_SCORE;
-    MAX_TRIES = cfg.maxTries || MAX_TRIES;
-    SUPPRESS_RESP_CAT = cfg.suppressRespCat || SUPPRESS_RESP_CAT;
-    INCREASE_FREQ_CAT = cfg.increaseFreqCat || INCREASE_FREQ_CAT;
-    MESSAGE_PREFIX = cfg.messagePrefix || MESSAGE_PREFIX;
-  } catch (e) {
-    console.warn('Failed to read config.json.');
-    token = process.env.TOKEN || token;
-  }
-  try {
-    client.login(token);
-  } catch (e) {
-    console.error('Failed to login with token:', token);
-  }
-  markovOpts = {
-    stateSize: STATE_SIZE,
-  };
-}
-
-/**
  * Checks if the author of a message as moderator-like permissions.
  * @param {GuildMember} member Sender of the message
  * @return {Boolean} True if the sender is a moderator.
@@ -211,7 +117,7 @@ function hoursToTimeoutInMs(hours: number) {
 }
 
 function randomHours() {
-  let random = Math.floor(Math.random() * Math.floor(12));
+  const random = Math.floor(Math.random() * Math.floor(12));
   if (random === 0) {
     return 10;
   } else {
@@ -257,10 +163,10 @@ function validateMessage(message: Discord.Message): string | null {
     'force',
     'test',
   ]);
-  const thisPrefix = messageText.substring(0, PREFIX.length);
-  if (thisPrefix === PREFIX) {
+  const thisPrefix = messageText.substring(0, config.prefix.length);
+  if (thisPrefix === config.prefix) {
     const split = messageText.split(' ');
-    if (split[0] === PREFIX && split.length === 1) {
+    if (split[0] === config.prefix && split.length === 1) {
       command = 'respond';
     } else if (allowableCommands.has(split[1])) {
       command = split[1];
@@ -277,11 +183,11 @@ function getResponseSettings(message: Discord.Message): ResponseSettings {
     increasedChance: false,
   };
 
-  if (parentName !== SUPPRESS_RESP_CAT && parentName !== INCREASE_FREQ_CAT) {
+  if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
     return settings;
   } else {
-    parentName === SUPPRESS_RESP_CAT ? (settings.allowedToRespond = false) : null;
-    parentName === INCREASE_FREQ_CAT ? (settings.increasedChance = true) : null;
+    parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
+    parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
 
     return settings;
   }
@@ -306,7 +212,7 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
       // eslint-disable-next-line no-await-in-loop
     > = await message.channel.fetchMessages({
       before: oldestMessageID,
-      limit: PAGE_SIZE,
+      limit: config.pageSize,
     });
     const nonBotMessageFormatted = messages
       .filter(elem => !elem.author.bot)
@@ -322,7 +228,7 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
       });
     historyCache = historyCache.concat(nonBotMessageFormatted);
     oldestMessageID = messages.last().id;
-    if (messages.size < PAGE_SIZE) {
+    if (messages.size < config.pageSize) {
       keepGoing = false;
     }
   }
@@ -343,9 +249,9 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   console.log('Responding...');
   const options: MarkovGenerateOptions = {
     filter: (result): boolean => {
-      return result.score >= MIN_SCORE && result.refs.length >= 2;
+      return result.score >= config.minScore && result.refs.length >= 2;
     },
-    maxTries: MAX_TRIES,
+    maxTries: config.maxTries,
   };
 
   const fsMarkov = new Markov([''], markovOpts);
@@ -413,12 +319,12 @@ function generateResponseForce(
   let options: MarkovGenerateOptions = {
     filter: result => {
       return (
-        result.score >= MIN_SCORE &&
+        result.score >= config.minScore &&
         substrings.some(word => result.string.split(' ').includes(word)) &&
         result.refs.length >= 2
       );
     },
-    maxTries: MAX_TRIES * 4,
+    maxTries: config.maxTries * 4,
   };
 
   const fsMarkov = new Markov([''], markovOpts);
@@ -449,7 +355,7 @@ function generateResponseForce(
     message.channel.send(prefixMessage(myResult.string), messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    suppressForceFailureMessages ? null : message.react('688964665531039784');
+    config.suppressForceFailureMessages ? null : message.react('688964665531039784');
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
@@ -460,7 +366,7 @@ function generateResponseForce(
 
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs');
-  client.user.setActivity(GAME);
+  client.user.setActivity(config.game);
   regenMarkov();
   channelSend = client.channels.get('735988826723319879') as Discord.TextChannel;
   crimIsLonely(hoursToTimeoutInMs(randomHours()));
@@ -553,8 +459,10 @@ client.on('message', message => {
       let randomPick = Math.random();
       console.log('Listening...', responseSettings);
       if (!message.author.bot) {
-        const chanceEval = responseSettings.increasedChance ? increasedMsgChance : randomMsgChance;
-        if (randomPick < crimMsgChance) {
+        const chanceEval = responseSettings.increasedChance
+          ? config.increasedMsgChance
+          : config.randomMsgChance;
+        if (randomPick < config.crimMsgChance) {
           console.log('Crimming it up');
           const messageSend =
             crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
@@ -563,7 +471,7 @@ client.on('message', message => {
             : console.log('Suppressed in this category.');
         }
         if (randomPick < chanceEval) {
-          if (!(randomPick < crimMsgChance)) {
+          if (!(randomPick < config.crimMsgChance)) {
             console.log('Feeling chatty! Speaking up...');
             const messageText = message.content.toLowerCase();
             responseSettings.allowedToRespond
@@ -585,7 +493,7 @@ client.on('message', message => {
         }
       }
     }
-    if (command === inviteCmd) {
+    if (command === config.inviteCmd) {
       const richem = new Discord.RichEmbed()
         .setAuthor(`Invite ${client.user.username}`, client.user.avatarURL)
         .setThumbnail(client.user.avatarURL)
@@ -607,5 +515,9 @@ client.on('messageDelete', message => {
   console.log('deletionCache:', deletionCache);
 });
 
-loadConfig();
+try {
+  client.login(config.token);
+} catch (e) {
+  console.error('Failed to login with token:', config.token);
+}
 schedule.scheduleJob('0 4 * * *', () => regenMarkov());
