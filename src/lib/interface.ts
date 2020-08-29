@@ -24,7 +24,6 @@ export interface MarkbotConfig {
   increaseFreqCat: string;
   messagePrefix: string;
   inviteCmd: string;
-  suppressForceFailureMessages: boolean;
   increasedMsgChance: number;
   randomMsgChance: number;
   crimMsgChance: number;

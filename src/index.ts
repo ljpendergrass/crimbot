@@ -3,19 +3,20 @@ import 'source-map-support/register';
 import * as Discord from 'discord.js';
 // https://discord.js.org/#/docs/main/stable/general/welcome
 import * as fs from 'fs';
-
-import Markov, {
-  MarkovGenerateOptions,
-  MarkovResult,
-  MarkovConstructorOptions,
-} from 'markov-strings';
-
+import Markov, { MarkovConstructorOptions, MarkovGenerateOptions } from 'markov-strings';
 import * as schedule from 'node-schedule';
-
 import * as common from 'common-words';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
-import { prefixMessage } from './lib/util';
+import {
+  hoursToTimeoutInMs,
+  isModerator,
+  prefixMessage,
+  randomHours,
+  removeCommonWords,
+  uniqueBy,
+  validateMessage,
+} from './lib/util';
 
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
 
@@ -37,26 +38,6 @@ let markovOpts: MarkovConstructorOptions = {
 };
 
 const crimMessages = JSON.parse(fs.readFileSync('config/crim-messages.json', 'utf8'));
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function uniqueBy<Record extends { [key: string]: any }>(
-  arr: Record[],
-  propertyName: keyof Record
-): Record[] {
-  const unique: Record[] = [];
-  const found: { [key: string]: boolean } = {};
-
-  for (let i = 0; i < arr.length; i += 1) {
-    if (arr[i][propertyName]) {
-      const value = arr[i][propertyName];
-      if (!found[value]) {
-        found[value] = true;
-        unique.push(arr[i]);
-      }
-    }
-  }
-  return unique;
-}
 
 /**
  * Regenerates the corpus and saves all cached changes to disk
@@ -97,34 +78,6 @@ function regenMarkov(): void {
   console.log('Done regenerating Markov corpus.');
 }
 
-/**
- * Checks if the author of a message as moderator-like permissions.
- * @param {GuildMember} member Sender of the message
- * @return {Boolean} True if the sender is a moderator.
- */
-function isModerator(member: Discord.GuildMember): boolean {
-  return (
-    member.hasPermission('ADMINISTRATOR') ||
-    member.hasPermission('MANAGE_CHANNELS') ||
-    member.hasPermission('KICK_MEMBERS') ||
-    member.hasPermission('MOVE_MEMBERS') ||
-    member.id === '82684276755136512' // charlocharlie#8095
-  );
-}
-
-function hoursToTimeoutInMs(hours: number) {
-  return hours * 60 * 60 * 1000;
-}
-
-function randomHours() {
-  const random = Math.floor(Math.random() * Math.floor(12));
-  if (random === 0) {
-    return 10;
-  } else {
-    return random;
-  }
-}
-
 function crimIsLonely(nextTimeout: number) {
   if (sendLonely) {
     const modifiedTimeout = nextTimeout + hoursToTimeoutInMs(5);
@@ -136,43 +89,13 @@ function crimIsLonely(nextTimeout: number) {
       crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
 
     setTimeout(() => {
-      channelSend.send(messageSend);
+      channelSend.send(prefixMessage(messageSend));
       return crimIsLonely(hoursToTimeoutInMs(randomHours()));
     }, modifiedTimeout);
   } else {
     console.log('Exiting lonely loop.');
     return;
   }
-}
-
-/**
- * Reads a new message and checks if and which command it is.
- * @param {Message} message Message to be interpreted as a command
- * @return {String} Command string
- */
-function validateMessage(message: Discord.Message): string | null {
-  const messageText = message.content.toLowerCase();
-  let command = null;
-  const allowableCommands = new Set([
-    'train',
-    'help',
-    'regen',
-    'invite',
-    'debug',
-    'tts',
-    'force',
-    'test',
-  ]);
-  const thisPrefix = messageText.substring(0, config.prefix.length);
-  if (thisPrefix === config.prefix) {
-    const split = messageText.split(' ');
-    if (split[0] === config.prefix && split.length === 1) {
-      command = 'respond';
-    } else if (allowableCommands.has(split[1])) {
-      command = split[1];
-    }
-  }
-  return command;
 }
 
 function getResponseSettings(message: Discord.Message): ResponseSettings {
@@ -239,93 +162,40 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
 }
 
 /**
- * General Markov-chain response function
+ * General Markov-chain optional-forced inclusion response function
  * @param {Message} message The message that invoked the action, used for channel info.
  * @param {Boolean} debug Sends debug info as a message if true.
  * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
  * invoking message.
+ * @param {Array<string>>} force Strings to force from
  */
-function generateResponse(message: Discord.Message, debug = false, tts = message.tts): void {
-  console.log('Responding...');
-  const options: MarkovGenerateOptions = {
-    filter: (result): boolean => {
-      return result.score >= config.minScore && result.refs.length >= 2;
-    },
-    maxTries: config.maxTries,
-  };
-
-  const fsMarkov = new Markov([''], markovOpts);
-  const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
-  fsMarkov.corpus = markovFile.corpus;
-  fsMarkov.startWords = markovFile.startWords;
-  fsMarkov.endWords = markovFile.endWords;
-
-  try {
-    const myResult = fsMarkov.generate(options) as MarkbotMarkovResult;
-    console.log('Generated Result:', myResult);
-    const messageOpts: Discord.MessageOptions = { tts };
-    const attachmentRefs = myResult.refs
-      .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
-      .map(ref => ref.attachment as string);
-    if (attachmentRefs.length > 0) {
-      const randomRefAttachment = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
-      messageOpts.files = [randomRefAttachment];
-    } else {
-      const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
-      if (randomMessage.attachment) {
-        messageOpts.files = [{ attachment: randomMessage.attachment }];
-      }
-    }
-
-    myResult.string = myResult.string.replace(/@everyone/g, 'at everyone');
-    myResult.string = myResult.string.replace(/@here/g, 'at here');
-    message.channel.send(prefixMessage(myResult.string), messageOpts);
-    if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
-  } catch (err) {
-    console.log(err);
-    if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
-    if (err.message.includes('Cannot build sentence with current corpus')) {
-      console.log('Not enough chat data for a response.');
-    }
-  }
-}
-
-function removeCommonWords(words: Array<string>, common: any) {
-  common.forEach(function(obj: any) {
-    let word = obj.word;
-    while (words.indexOf(word) !== -1) {
-      words.splice(words.indexOf(word), 1);
-    }
-  });
-  return words;
-}
-
-/**
- * General Markov-chain forced inclusion response function
- * @param {Message} message The message that invoked the action, used for channel info.
- * @param {Boolean} debug Sends debug info as a message if true.
- * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
- * invoking message.
- */
-function generateResponseForce(
+function generateResponse(
   message: Discord.Message,
   debug = false,
   tts = message.tts,
-  force = ' '
+  force?: Array<string>
 ): void {
-  console.log('Forcing response...');
-  const substrings = removeCommonWords(force.split(' '), common);
-  console.log("'Topics': ", substrings);
-  let options: MarkovGenerateOptions = {
-    filter: result => {
-      return (
-        result.score >= config.minScore &&
-        substrings.some(word => result.string.split(' ').includes(word)) &&
-        result.refs.length >= 2
-      );
-    },
-    maxTries: config.maxTries * 4,
-  };
+  console.log('Generating response...');
+  let options: MarkovGenerateOptions;
+  if (force === undefined || force.length == 0) {
+    options = {
+      filter: (result): boolean => {
+        return result.score >= config.minScore && result.refs.length >= 2;
+      },
+      maxTries: config.maxTries,
+    };
+  } else {
+    options = {
+      filter: result => {
+        return (
+          result.score >= config.minScore &&
+          force.some(word => result.string.split(' ').includes(word)) &&
+          result.refs.length >= 2
+        );
+      },
+      maxTries: config.maxTries * 4,
+    };
+  }
 
   const fsMarkov = new Markov([''], markovOpts);
   const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
@@ -355,7 +225,7 @@ function generateResponseForce(
     message.channel.send(prefixMessage(myResult.string), messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
-    config.suppressForceFailureMessages ? null : message.react('688964665531039784');
+    message.react('688964665531039784');
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
@@ -451,9 +321,10 @@ client.on('message', message => {
     if (command === 'force') {
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
-      let force = ' ';
-      split[2] ? (force = messageText.substring(12)) : ' ';
-      generateResponseForce(message, false, false, force);
+      let force = messageText.substring(12);
+      const substrings = removeCommonWords(force.split(' '), common).filter(Boolean);
+      console.log('Topics: ', substrings);
+      generateResponse(message, false, false, substrings);
     }
     if (command === null) {
       let randomPick = Math.random();
@@ -473,9 +344,9 @@ client.on('message', message => {
         if (randomPick < chanceEval) {
           if (!(randomPick < config.crimMsgChance)) {
             console.log('Feeling chatty! Speaking up...');
-            const messageText = message.content.toLowerCase();
+            const messageText = message.content.toLowerCase().split(' ');
             responseSettings.allowedToRespond
-              ? generateResponseForce(message, false, false, messageText)
+              ? generateResponse(message, false, false, messageText)
               : console.log('Suppressed in this category.');
           }
         }
