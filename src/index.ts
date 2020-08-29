@@ -285,10 +285,6 @@ client.on('message', message => {
     if (command === 'regen') {
       regenMarkov();
     }
-    if (command === 'test') {
-      console.log('test success');
-      // simple area to test features in here
-    }
     if (command === 'force') {
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
