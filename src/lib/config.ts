@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { MarkbotConfig } from './interface';
-// import { client } from '../index';
 
 /**
  * Loads the config settings from disk
@@ -45,7 +44,3 @@ export const config: MarkbotConfig = {
   token: loadConfig.token || process.env.TOKEN || token,
   pageSize: loadConfig.pageSize || 100,
 };
-//
-// markovOpts = {
-//   stateSize: STATE_SIZE,
-// };
