@@ -259,9 +259,10 @@ client.on('message', message => {
     const command = validateMessage(message);
     const responseSettings = getResponseSettings(message);
     if (command === 'help') {
-      message.channel.send(richem).catch(() => {
-        message.author.send(richem);
-      });
+      message.channel.send('help currently broken');
+      // message.channel.send(richem).catch(() => {
+      //   message.author.send(richem);
+      // });
     }
     if (command === 'train') {
       if (isModerator(message.member)) {
@@ -332,17 +333,18 @@ client.on('message', message => {
       }
     }
     if (command === config.inviteCmd) {
-      const richem = new Discord.RichEmbed()
-        .setAuthor(`Invite ${client.user.username}`, client.user.avatarURL)
-        .setThumbnail(client.user.avatarURL)
-        .addField(
-          'Invite',
-          `[Invite ${client.user.username} to your server](https://discordapp.com/oauth2/authorize?client_id=${client.user.id}&scope=bot)`
-        );
-
-      message.channel.send(richem).catch(() => {
-        message.author.send(richem);
-      });
+      message.channel.send('this currently broken');
+      // const richem = new Discord.RichEmbed()
+      //   .setAuthor(`Invite ${client.user.username}`, client.user.avatarURL)
+      //   .setThumbnail(client.user.avatarURL)
+      //   .addField(
+      //     'Invite',
+      //     `[Invite ${client.user.username} to your server](https://discordapp.com/oauth2/authorize?client_id=${client.user.id}&scope=bot)`
+      //   );
+      //
+      // message.channel.send(richem).catch(() => {
+      //   message.author.send(richem);
+      // });
     }
   }
 });
