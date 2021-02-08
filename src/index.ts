@@ -242,9 +242,13 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
   let randomPick = Math.random();
   console.log('Listening...', responseSettings);
   if (!message.author.bot) {
-    const chanceEval = responseSettings.increasedChance
-      ? config.increasedMsgChance
-      : config.randomMsgChance;
+    const chanceEval =
+      message.channel.id === chattyChannelId
+        ? config.chattyChance
+        : responseSettings.increasedChance
+        ? config.increasedMsgChance
+        : config.randomMsgChance;
+
     if (randomPick < config.crimMsgChance) {
       console.log('Crimming it up');
       const messageSend =
@@ -258,7 +262,9 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
         console.log('Feeling chatty! Speaking up...');
         const messageText = message.content.toLowerCase().split(' ');
         responseSettings.allowedToRespond
-          ? generateResponse(message, false, false, messageText)
+          ? message.channel.id === chattyChannelId
+            ? generateResponse(message, false, false)
+            : generateResponse(message, false, false, messageText)
           : console.log('Suppressed in this category.');
       }
     }
@@ -333,6 +339,11 @@ client.on('message', message => {
           message.react('❌');
         }
       }
+    }
+    if (command === 'pick') {
+      const options = message.content.substring(11).split(' OR ');
+      const pickRandom = options[Math.floor(Math.random() * options.length)];
+      message.channel.send(`I choose ${pickRandom}`);
     }
     if (command === null) {
       indirectResponse(responseSettings, message);

@@ -24,6 +24,7 @@ export interface MarkbotConfig {
   increaseFreqCat: string;
   messagePrefix: string;
   increasedMsgChance: number;
+  chattyChance: number;
   randomMsgChance: number;
   crimMsgChance: number;
   token: string;

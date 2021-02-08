@@ -72,6 +72,7 @@ export function validateMessage(message: Discord.Message): string | null {
     'force',
     'test',
     'chatty',
+    'pick',
   ]);
   const thisPrefix = messageText.substring(0, config.prefix.length);
   if (thisPrefix === config.prefix) {
@@ -143,6 +144,11 @@ export const helpEmbed = {
       name: '!crim chatty [channel ID / off]',
       value:
         'Set a channel for Crim to have an increased chance to respond in, or use !crim chatty off to turn off chatty.',
+    },
+    {
+      name: "!crim pick [list of options separated by ' OR ']",
+      value:
+        'Have Crim settle your arguments for you by picking an option. Each option must be separated by `SPACE+OR+SPACE`',
     },
     {
       name: '!crim regen',
