@@ -95,12 +95,15 @@ export function removeCommonWords(words: Array<string>, common: any) {
   return words;
 }
 
-export function getResponseSettings(message: Discord.Message): ResponseSettings {
+export function getResponseSettings(
+  message: Discord.Message,
+  chattyChannelId: String
+): ResponseSettings {
   const channel = message.channel as Discord.TextChannel;
   const parentName = channel.parent.name;
   let settings: ResponseSettings = {
     allowedToRespond: true,
-    increasedChance: false,
+    increasedChance: message.channel.id === chattyChannelId,
   };
 
   if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
@@ -108,7 +111,6 @@ export function getResponseSettings(message: Discord.Message): ResponseSettings 
   } else {
     parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
     parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
-
     return settings;
   }
 }
@@ -133,9 +135,14 @@ export const helpEmbed = {
         'Generate a normal response and see the source messages that helped generate the message',
     },
     {
-      name: '!crim force',
+      name: '!crim force [terms]',
       value:
         "Send a list of terms for Crim to try to generate a message with. Crim will filter out common words. If Crim can't think of a relevant response he will quit and let you know with a reaction.",
+    },
+    {
+      name: '!crim chatty [channel ID / off]',
+      value:
+        'Set a channel for Crim to have an increased chance to respond in, or use !crim chatty off to turn off chatty.',
     },
     {
       name: '!crim regen',

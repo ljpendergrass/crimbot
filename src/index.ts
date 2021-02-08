@@ -27,6 +27,7 @@ export const client = new Discord.Client();
 let channelSend: Discord.TextChannel;
 const errors: string[] = [];
 let sendLonely = true;
+let chattyChannelId = '';
 
 let fileObj: MessagesDB = {
   messages: [],
@@ -279,7 +280,7 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
 client.on('message', message => {
   if (message.guild) {
     const command = validateMessage(message);
-    const responseSettings = getResponseSettings(message);
+    const responseSettings = getResponseSettings(message, chattyChannelId);
     if (command === 'help') {
       message.channel.send({ embed: helpEmbed }).catch(() => {
         message.author.send({ embed: helpEmbed });
@@ -314,6 +315,24 @@ client.on('message', message => {
       const substrings = removeCommonWords(force.split(' '), common).filter(Boolean);
       console.log('Topics: ', substrings);
       generateResponse(message, false, false, substrings);
+    }
+    if (command === 'chatty') {
+      const arg = message.content.substring(13);
+      if (arg === 'off') {
+        chattyChannelId = '';
+        message.channel.send('No longer being chatty in requested channel, if there was one.');
+      } else {
+        const channelRequested = client.channels.get(
+          message.content.substring(13)
+        ) as Discord.TextChannel;
+
+        if (channelRequested !== undefined) {
+          message.channel.send(`Updating Crim's Chatty Channel to ${channelRequested.name}`);
+          chattyChannelId = arg;
+        } else {
+          message.react('❌');
+        }
+      }
     }
     if (command === null) {
       indirectResponse(responseSettings, message);
