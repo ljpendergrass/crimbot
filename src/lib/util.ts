@@ -1,11 +1,12 @@
 import { config } from './config';
 import * as Discord from 'discord.js';
+import { ResponseSettings } from './interface';
 
 export function prefixMessage(message: string) {
   return config.messagePrefix.concat(' ', message);
 }
 
-/**
+/**dis
  * Checks if the author of a message as moderator-like permissions.
  * @param {GuildMember} member Sender of the message
  * @return {Boolean} True if the sender is a moderator.
@@ -70,6 +71,7 @@ export function validateMessage(message: Discord.Message): string | null {
     'tts',
     'force',
     'test',
+    'chatty',
   ]);
   const thisPrefix = messageText.substring(0, config.prefix.length);
   if (thisPrefix === config.prefix) {
@@ -92,3 +94,58 @@ export function removeCommonWords(words: Array<string>, common: any) {
   });
   return words;
 }
+
+export function getResponseSettings(message: Discord.Message): ResponseSettings {
+  const channel = message.channel as Discord.TextChannel;
+  const parentName = channel.parent.name;
+  let settings: ResponseSettings = {
+    allowedToRespond: true,
+    increasedChance: false,
+  };
+
+  if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
+    return settings;
+  } else {
+    parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
+    parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
+
+    return settings;
+  }
+}
+
+export const helpEmbed = {
+  title: 'Crimbot',
+  description:
+    "Hi, I'm crimbot. Commands are listed below. Some commands are left off because they aren't really fleshed out.",
+  url: 'https://discordapp.com',
+  color: 4237055,
+  thumbnail: {
+    url: 'https://i.imgur.com/spQbBAM.jpg',
+  },
+  fields: [
+    {
+      name: '!crim',
+      value: 'Generate a normal response',
+    },
+    {
+      name: '!crim debug',
+      value:
+        'Generate a normal response and see the source messages that helped generate the message',
+    },
+    {
+      name: '!crim force',
+      value:
+        "Send a list of terms for Crim to try to generate a message with. Crim will filter out common words. If Crim can't think of a relevant response he will quit and let you know with a reaction.",
+    },
+    {
+      name: '!crim regen',
+      value:
+        'Dump the messages that Crim has been listening to into the current corpus. This runs nightly automatically.',
+    },
+    {
+      name: '!crim train',
+      value:
+        'Requires elevated permissions. Will overwrite the current database. Do **not** use casually, you likely want to use !crim regen instead.',
+    },
+  ],
+};

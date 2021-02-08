@@ -9,6 +9,8 @@ import * as common from 'common-words';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
 import {
+  getResponseSettings,
+  helpEmbed,
   hoursToTimeoutInMs,
   isModerator,
   prefixMessage,
@@ -17,7 +19,6 @@ import {
   uniqueBy,
   validateMessage,
 } from './lib/util';
-import { richem } from './lib/help';
 
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
 
@@ -96,24 +97,6 @@ function crimIsLonely(nextTimeout: number) {
   } else {
     console.log('Exiting lonely loop.');
     return;
-  }
-}
-
-function getResponseSettings(message: Discord.Message): ResponseSettings {
-  const channel = message.channel as Discord.TextChannel;
-  const parentName = channel.parent.name;
-  let settings: ResponseSettings = {
-    allowedToRespond: true,
-    increasedChance: false,
-  };
-
-  if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
-    return settings;
-  } else {
-    parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
-    parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
-
-    return settings;
   }
 }
 
@@ -254,15 +237,53 @@ client.on('error', err => {
   });
 });
 
+function indirectResponse(responseSettings: ResponseSettings, message: Discord.Message) {
+  let randomPick = Math.random();
+  console.log('Listening...', responseSettings);
+  if (!message.author.bot) {
+    const chanceEval = responseSettings.increasedChance
+      ? config.increasedMsgChance
+      : config.randomMsgChance;
+    if (randomPick < config.crimMsgChance) {
+      console.log('Crimming it up');
+      const messageSend =
+        crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
+      responseSettings.allowedToRespond
+        ? message.channel.send(prefixMessage(messageSend))
+        : console.log('Suppressed in this category.');
+    }
+    if (randomPick < chanceEval) {
+      if (!(randomPick < config.crimMsgChance)) {
+        console.log('Feeling chatty! Speaking up...');
+        const messageText = message.content.toLowerCase().split(' ');
+        responseSettings.allowedToRespond
+          ? generateResponse(message, false, false, messageText)
+          : console.log('Suppressed in this category.');
+      }
+    }
+
+    const dbObj: MessageRecord = {
+      string: message.content,
+      id: message.id,
+    };
+    if (message.attachments.size > 0) {
+      dbObj.attachment = message.attachments.values().next().value.url;
+    }
+    messageCache.push(dbObj);
+    if (message.isMentioned(client.user)) {
+      generateResponse(message);
+    }
+  }
+}
+
 client.on('message', message => {
   if (message.guild) {
     const command = validateMessage(message);
     const responseSettings = getResponseSettings(message);
     if (command === 'help') {
-      message.channel.send('help currently broken');
-      // message.channel.send(richem).catch(() => {
-      //   message.author.send(richem);
-      // });
+      message.channel.send({ embed: helpEmbed }).catch(() => {
+        message.author.send({ embed: helpEmbed });
+      });
     }
     if (command === 'train') {
       if (isModerator(message.member)) {
@@ -295,56 +316,7 @@ client.on('message', message => {
       generateResponse(message, false, false, substrings);
     }
     if (command === null) {
-      let randomPick = Math.random();
-      console.log('Listening...', responseSettings);
-      if (!message.author.bot) {
-        const chanceEval = responseSettings.increasedChance
-          ? config.increasedMsgChance
-          : config.randomMsgChance;
-        if (randomPick < config.crimMsgChance) {
-          console.log('Crimming it up');
-          const messageSend =
-            crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
-          responseSettings.allowedToRespond
-            ? message.channel.send(prefixMessage(messageSend))
-            : console.log('Suppressed in this category.');
-        }
-        if (randomPick < chanceEval) {
-          if (!(randomPick < config.crimMsgChance)) {
-            console.log('Feeling chatty! Speaking up...');
-            const messageText = message.content.toLowerCase().split(' ');
-            responseSettings.allowedToRespond
-              ? generateResponse(message, false, false, messageText)
-              : console.log('Suppressed in this category.');
-          }
-        }
-
-        const dbObj: MessageRecord = {
-          string: message.content,
-          id: message.id,
-        };
-        if (message.attachments.size > 0) {
-          dbObj.attachment = message.attachments.values().next().value.url;
-        }
-        messageCache.push(dbObj);
-        if (message.isMentioned(client.user)) {
-          generateResponse(message);
-        }
-      }
-    }
-    if (command === config.inviteCmd) {
-      message.channel.send('this currently broken');
-      // const richem = new Discord.RichEmbed()
-      //   .setAuthor(`Invite ${client.user.username}`, client.user.avatarURL)
-      //   .setThumbnail(client.user.avatarURL)
-      //   .addField(
-      //     'Invite',
-      //     `[Invite ${client.user.username} to your server](https://discordapp.com/oauth2/authorize?client_id=${client.user.id}&scope=bot)`
-      //   );
-      //
-      // message.channel.send(richem).catch(() => {
-      //   message.author.send(richem);
-      // });
+      indirectResponse(responseSettings, message);
     }
   }
 });
