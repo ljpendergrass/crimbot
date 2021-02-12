@@ -8,7 +8,6 @@
     "start:ts": "ts-node index.ts",
     "build": "tsc",
     "lint": "tsc --noEmit && eslint **/*.ts",
-    "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
   },
   "repository": "https://github.com/ljpendergrass/markov-discord.git",
   "keywords": [
@@ -20,7 +19,6 @@
     "discord-js",
     "discord-bot",
     "markov-chain-bot",
-    "docker"
   ],
   "author": "Charlie Laabs <charlielaabs@gmail.com>",
   "license": "MIT",
