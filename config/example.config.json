@@ -1,0 +1,7 @@
+{
+  "prefix":"!prefix",
+  "game":"\"!prefix help\" for help",
+  "token":"1234",
+  "suppressRespCat": "BOT-FREE-ZONE",
+  "increaseFreqCat": "Events"
+}
