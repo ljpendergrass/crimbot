@@ -146,9 +146,9 @@ export const helpEmbed = {
         'Set a channel for Crim to have an increased chance to respond in, or use !crim chatty off to turn off chatty.',
     },
     {
-      name: "!crim pick [list of options separated by ' OR ']",
+      name: "!crim pick [list of options separated by ' or ']",
       value:
-        'Have Crim settle your arguments for you by picking an option. Each option must be separated by `SPACE+OR+SPACE`',
+        'Have Crim settle your arguments for you by picking an option. Each option must be separated by `[whitespace]or[whitespace]`, case insensitive.',
     },
     {
       name: '!crim regen',

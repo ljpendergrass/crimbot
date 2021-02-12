@@ -341,7 +341,7 @@ client.on('message', message => {
       }
     }
     if (command === 'pick') {
-      const options = message.content.substring(11).split(' OR ');
+      const options = message.content.substring(11).split(/\s+[o|O][r|R]\s+/gm);
       const pickRandom = options[Math.floor(Math.random() * options.length)];
       message.channel.send(`I choose ${pickRandom}`);
     }
