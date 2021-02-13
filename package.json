@@ -7,7 +7,7 @@
     "start": "node dist/index.js",
     "start:ts": "ts-node index.ts",
     "build": "tsc",
-    "lint": "tsc --noEmit && eslint **/*.ts",
+    "lint": "tsc --noEmit && eslint **/*.ts"
   },
   "repository": "https://github.com/ljpendergrass/markov-discord.git",
   "keywords": [
@@ -18,7 +18,7 @@
     "bot",
     "discord-js",
     "discord-bot",
-    "markov-chain-bot",
+    "markov-chain-bot"
   ],
   "author": "Charlie Laabs <charlielaabs@gmail.com>",
   "license": "MIT",
