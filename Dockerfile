@@ -15,8 +15,14 @@ RUN apk --no-cache --virtual build-dependencies add \
     && npm install \
     && apk del build-dependencies
 
-# Bundle app source
-COPY . .
+# Bundle app source and configuration
+COPY config config/
+COPY src src/
+
+# copy specific buiild files
+COPY ecosystem.config.js .
+COPY tsconfig.json .
+COPY type.d.ts .
 
 RUN npm run build
 

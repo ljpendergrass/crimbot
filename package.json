@@ -1,7 +1,7 @@
 {
-  "name": "markbot",
+  "name": "crimbot",
   "version": "0.7.3",
-  "description": "A conversational Markov chain bot for Discord",
+  "description": "A conversational Markov chain bot for Discord, crim-flavored",
   "main": "index.js",
   "scripts": {
     "start": "node dist/index.js",
@@ -20,7 +20,7 @@
     "discord-bot",
     "markov-chain-bot"
   ],
-  "author": "Charlie Laabs <charlielaabs@gmail.com>",
+  "author": "Logan P <logmister@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "bufferutil": "^4.0.1",
