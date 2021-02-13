@@ -3,3 +3,4 @@
 # Except this file
 !.gitignore
 !example.config.json
+!crim-messages.json
