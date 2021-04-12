@@ -1,23 +1,23 @@
-import { config } from './config';
 import * as Discord from 'discord.js';
+import { config } from './config';
 import { ResponseSettings } from './interface';
 
 export function prefixMessage(message: string) {
   return config.messagePrefix.concat(' ', message);
 }
 
-/**dis
+/** dis
  * Checks if the author of a message as moderator-like permissions.
  * @param {GuildMember} member Sender of the message
  * @return {Boolean} True if the sender is a moderator.
  */
 export function isModerator(member: Discord.GuildMember): boolean {
   return (
-    member.hasPermission('ADMINISTRATOR') ||
-    member.hasPermission('MANAGE_CHANNELS') ||
-    member.hasPermission('KICK_MEMBERS') ||
-    member.hasPermission('MOVE_MEMBERS') ||
-    member.id === 'XXX' // example id
+    // member.hasPermission('ADMINISTRATOR') ||
+    // member.hasPermission('MANAGE_CHANNELS') ||
+    // member.hasPermission('KICK_MEMBERS') ||
+    // member.hasPermission('MOVE_MEMBERS') ||
+    member.id === '239610853811421185' // Logan
   );
 }
 
@@ -49,9 +49,8 @@ export function randomHours() {
   const random = Math.floor(Math.random() * Math.floor(12));
   if (random === 0) {
     return 10;
-  } else {
-    return random;
   }
+  return random;
 }
 
 /**
@@ -64,6 +63,7 @@ export function validateMessage(message: Discord.Message): string | null {
   let command = null;
   const allowableCommands = new Set([
     'train',
+    'fullscan',
     'help',
     'regen',
     'invite',
@@ -88,7 +88,7 @@ export function validateMessage(message: Discord.Message): string | null {
 
 export function removeCommonWords(words: Array<string>, common: any) {
   common.forEach(function(obj: any) {
-    let word = obj.word;
+    const { word } = obj;
     while (words.indexOf(word) !== -1) {
       words.splice(words.indexOf(word), 1);
     }
@@ -98,22 +98,21 @@ export function removeCommonWords(words: Array<string>, common: any) {
 
 export function getResponseSettings(
   message: Discord.Message,
-  chattyChannelId: String
+  chattyChannelId: string
 ): ResponseSettings {
   const channel = message.channel as Discord.TextChannel;
   const parentName = channel.parent.name;
-  let settings: ResponseSettings = {
+  const settings: ResponseSettings = {
     allowedToRespond: true,
     increasedChance: message.channel.id === chattyChannelId,
   };
 
   if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
     return settings;
-  } else {
-    parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
-    parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
-    return settings;
   }
+  parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
+  parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
+  return settings;
 }
 
 export const helpEmbed = {

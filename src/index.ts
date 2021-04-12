@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import Markov, { MarkovConstructorOptions, MarkovGenerateOptions } from 'markov-strings';
 import * as schedule from 'node-schedule';
 import * as common from 'common-words';
+import { Collection, GuildChannel, TextChannel, Snowflake } from 'discord.js';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
 import {
@@ -26,7 +27,7 @@ export const client = new Discord.Client();
 
 let channelSend: Discord.TextChannel;
 const errors: string[] = [];
-let sendLonely = true;
+const sendLonely = false;
 let chattyChannelId = '';
 
 let fileObj: MessagesDB = {
@@ -36,7 +37,7 @@ let fileObj: MessagesDB = {
 let markovDB: MessageRecord[] = [];
 let messageCache: MessageRecord[] = [];
 let deletionCache: string[] = [];
-let markovOpts: MarkovConstructorOptions = {
+const markovOpts: MarkovConstructorOptions = {
   stateSize: config.stateSize,
 };
 
@@ -97,7 +98,6 @@ function crimIsLonely(nextTimeout: number) {
     }, modifiedTimeout);
   } else {
     console.log('Exiting lonely loop.');
-    return;
   }
 }
 
@@ -138,6 +138,72 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
     oldestMessageID = messages.last().id;
     if (messages.size < config.pageSize) {
       keepGoing = false;
+    }
+  }
+  console.log(`Trained from ${historyCache.length} past human authored messages.`);
+  messageCache = messageCache.concat(historyCache);
+  regenMarkov();
+  message.reply(`Finished training from past ${historyCache.length} messages.`);
+}
+
+/**
+ * Function to recursively get all messages in a text channel's history. Ends
+ * by regnerating the corpus.
+ * @param {Channel} channel Channel to get messages from.
+ */
+async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
+  let historyCache: MessageRecord[] = [];
+
+  const channelsToScan = [] as Array<string>;
+  message.guild.channels.forEach(value => {
+    if (value.type && value.type === 'text') {
+      channelsToScan.push(value.id);
+    }
+  });
+  console.log('Scanning channels: ', channelsToScan);
+
+  console.log('entered fetchMessagesByChannel');
+  // eslint-disable-next-line no-restricted-syntax
+  for (const channelId of channelsToScan) {
+    const channel = client.channels.get(channelId) as TextChannel;
+    if (!(channel.parentID === '737790706445320353')) {
+      console.log('Scanning', channel.name);
+      let oldestMessageID;
+      let keepGoing = true;
+      while (keepGoing) {
+        try {
+          const messages: Discord.Collection<
+            string,
+            Discord.Message
+            // eslint-disable-next-line no-await-in-loop
+          > = await channel.fetchMessages({
+            before: oldestMessageID,
+            limit: config.pageSize,
+          });
+          const nonBotMessageFormatted = messages
+            .filter(elem => !elem.author.bot)
+            .map(elem => {
+              const dbObj: MessageRecord = {
+                string: elem.content,
+                id: elem.id,
+              };
+              if (elem.attachments.size > 0) {
+                dbObj.attachment = elem.attachments.values().next().value.url;
+              }
+              return dbObj;
+            });
+          historyCache = historyCache.concat(nonBotMessageFormatted);
+          oldestMessageID = messages.last().id;
+          if (messages.size < config.pageSize) {
+            keepGoing = false;
+          }
+        } catch (error) {
+          console.log('Failed!', error);
+          keepGoing = false;
+        }
+      }
+    } else {
+      console.log('Skipping', channel.name);
     }
   }
   console.log(`Trained from ${historyCache.length} past human authored messages.`);
@@ -200,7 +266,7 @@ function generateResponse(
       messageOpts.files = [randomRefAttachment];
     } else {
       const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
-      if (randomMessage.attachment) {
+      if (randomMessage && randomMessage.attachment) {
         messageOpts.files = [{ attachment: randomMessage.attachment }];
       }
     }
@@ -222,7 +288,7 @@ function generateResponse(
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs');
   client.user.setActivity(config.game);
-  regenMarkov();
+  // regenMarkov();
   channelSend = client.channels.get('735988826723319879') as Discord.TextChannel;
   crimIsLonely(hoursToTimeoutInMs(randomHours()));
 });
@@ -239,7 +305,7 @@ client.on('error', err => {
 });
 
 function indirectResponse(responseSettings: ResponseSettings, message: Discord.Message) {
-  let randomPick = Math.random();
+  const randomPick = Math.random();
   console.log('Listening...', responseSettings);
   if (!message.author.bot) {
     const chanceEval =
@@ -293,13 +359,39 @@ client.on('message', message => {
       });
     }
     if (command === 'train') {
-      if (isModerator(message.member)) {
+      if (message.author.id === '239610853811421185') {
         console.log('Training...');
         fileObj = {
           messages: [],
         };
         fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
         fetchMessages(message);
+      } else {
+        message.channel.send('Sorry, that command is restricted.');
+      }
+    }
+    if (command === 'test') {
+      const channelsToScan = [] as Array<string>;
+      message.guild.channels.forEach(value => {
+        if (value.type === 'text' && value.name === 'general') {
+          console.log(value);
+          channelsToScan.push(value.id);
+        }
+      });
+      console.log();
+    }
+    if (command === 'fullscan') {
+      console.log('doing fullscan');
+      message.channel.send('Scanning...');
+      if (message.author.id === '239610853811421185') {
+        console.log('Oh god, here goes nothing.');
+        fileObj = {
+          messages: [],
+        };
+        fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
+        fetchMessagesByChannel(message);
+      } else {
+        message.channel.send('Sorry, that command is restricted.');
       }
     }
     if (command === 'respond') {
@@ -317,7 +409,7 @@ client.on('message', message => {
     if (command === 'force') {
       const messageText = message.content.toLowerCase();
       const split = messageText.split(' ');
-      let force = messageText.substring(12);
+      const force = messageText.substring(12);
       const substrings = removeCommonWords(force.split(' '), common).filter(Boolean);
       console.log('Topics: ', substrings);
       generateResponse(message, false, false, substrings);
