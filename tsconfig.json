@@ -10,7 +10,8 @@
       "node_modules/@types"
     ], /* List of folders to include type definitions from. */
     "inlineSourceMap": true, /* Emit a single file with source maps instead of having a separate file. */
-    "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
+    "forceConsistentCasingInFileNames": true, /* Disallow inconsistently-cased references to the same file. */
+    "esModuleInterop": true
   },
   "include": [
     "**/*.ts"

@@ -3,13 +3,14 @@
   "version": "0.7.3",
   "description": "A conversational Markov chain bot for Discord, crim-flavored",
   "main": "index.js",
+  "private": true,
   "scripts": {
     "start": "node dist/index.js",
     "start:ts": "ts-node index.ts",
     "build": "tsc",
     "lint": "tsc --noEmit && eslint **/*.ts"
   },
-  "repository": "https://github.com/ljpendergrass/markov-discord.git",
+  "repository": "https://github.com/ljpendergrass/crimbot.git",
   "keywords": [
     "discord",
     "markov",
@@ -23,31 +24,34 @@
   "author": "Logan P <logmister@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "bufferutil": "^4.0.1",
-    "discord.js": "^11.5.1",
-    "erlpack": "^0.1.3",
-    "markov-strings": "^2.1.0",
-    "node-schedule": "^1.3.2",
-    "source-map-support": "^0.5.16",
-    "zlib-sync": "^0.1.6"
+    "axios": "^0.21.4",
+    "bufferutil": "^4.0.5",
+    "common-words": "^0.1.3",
+    "discord.js": "^11.6.4",
+    "erlpack": "^0.1.4",
+    "form-data": "^4.0.0",
+    "markov-strings": "^2.1.1",
+    "node-schedule": "^1.3.3",
+    "source-map-support": "^0.5.21",
+    "zlib-sync": "^0.1.7"
   },
   "engines": {
     "node": ">=12.0.0"
   },
   "devDependencies": {
-    "@types/node": "^12.12.21",
-    "@types/node-schedule": "^1.3.0",
-    "@typescript-eslint/eslint-plugin": "^2.13.0",
-    "@typescript-eslint/parser": "^2.13.0",
-    "common-words": "^0.1.3",
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.0.0",
-    "eslint-config-prettier": "^6.7.0",
-    "eslint-plugin-import": "^2.19.1",
-    "eslint-plugin-prettier": "^3.1.2",
+    "@types/node": "^12.20.39",
+    "@types/node-schedule": "^1.3.2",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-airbnb-typescript": "^16.1.0",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-prettier": "^3.4.1",
     "prettier": "^1.19.1",
-    "ts-node": "^8.5.4",
-    "typescript": "^3.7.4"
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.10"
   },
   "eslintIgnore": [
     "**/*.js"

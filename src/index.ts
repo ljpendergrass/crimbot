@@ -6,22 +6,19 @@ import * as fs from 'fs';
 import Markov, { MarkovConstructorOptions, MarkovGenerateOptions } from 'markov-strings';
 import * as schedule from 'node-schedule';
 import * as common from 'common-words';
-import { Collection, GuildChannel, TextChannel, Snowflake } from 'discord.js';
+import FormData from 'form-data';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
 import {
   getResponseSettings,
   helpEmbed,
   hoursToTimeoutInMs,
-  isModerator,
   prefixMessage,
   randomHours,
   removeCommonWords,
   uniqueBy,
   validateMessage,
 } from './lib/util';
-
-const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
 
 export const client = new Discord.Client();
 
@@ -146,11 +143,6 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
   message.reply(`Finished training from past ${historyCache.length} messages.`);
 }
 
-/**
- * Function to recursively get all messages in a text channel's history. Ends
- * by regnerating the corpus.
- * @param {Channel} channel Channel to get messages from.
- */
 async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
   let historyCache: MessageRecord[] = [];
 
@@ -165,10 +157,11 @@ async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
   console.log('entered fetchMessagesByChannel');
   // eslint-disable-next-line no-restricted-syntax
   for (const channelId of channelsToScan) {
-    const channel = client.channels.get(channelId) as TextChannel;
+    const channel = client.channels.get(channelId) as Discord.TextChannel;
     if (!(channel.parentID === '737790706445320353')) {
       console.log('Scanning', channel.name);
       let oldestMessageID;
+      let count = 0;
       let keepGoing = true;
       while (keepGoing) {
         try {
@@ -195,6 +188,11 @@ async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
           historyCache = historyCache.concat(nonBotMessageFormatted);
           oldestMessageID = messages.last().id;
           if (messages.size < config.pageSize) {
+            keepGoing = false;
+          }
+          count += config.pageSize;
+          // jank implementation of limiter
+          if (count > 2500) {
             keepGoing = false;
           }
         } catch (error) {
@@ -228,7 +226,7 @@ function generateResponse(
 ): void {
   console.log('Generating response...');
   let options: MarkovGenerateOptions;
-  if (force === undefined || force.length == 0) {
+  if (force === undefined || force.length === 0) {
     options = {
       filter: (result): boolean => {
         return result.score >= config.minScore && result.refs.length >= 2;
@@ -275,8 +273,11 @@ function generateResponse(
     myResult.string = myResult.string.replace(/@here/g, 'at here');
     message.channel.send(prefixMessage(myResult.string), messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
+    message.channel.stopTyping();
   } catch (err) {
     message.react('688964665531039784');
+    message.channel.stopTyping();
+
     console.log(err);
     if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
     if (err.message.includes('Cannot build sentence with current corpus')) {
@@ -308,30 +309,36 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
   const randomPick = Math.random();
   console.log('Listening...', responseSettings);
   if (!message.author.bot) {
-    const chanceEval =
-      message.channel.id === chattyChannelId
-        ? config.chattyChance
-        : responseSettings.increasedChance
+    let chanceEval: number;
+    if (message.channel.id === chattyChannelId) {
+      chanceEval = config.chattyChance;
+    } else {
+      chanceEval = responseSettings.increasedChance
         ? config.increasedMsgChance
         : config.randomMsgChance;
+    }
 
     if (randomPick < config.crimMsgChance) {
       console.log('Crimming it up');
       const messageSend =
         crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
-      responseSettings.allowedToRespond
-        ? message.channel.send(prefixMessage(messageSend))
-        : console.log('Suppressed in this category.');
+      if (responseSettings.allowedToRespond) {
+        message.channel.send(prefixMessage(messageSend));
+      } else {
+        console.log('Suppressed in this category.');
+      }
     }
-    if (randomPick < chanceEval) {
-      if (!(randomPick < config.crimMsgChance)) {
-        console.log('Feeling chatty! Speaking up...');
-        const messageText = message.content.toLowerCase().split(' ');
-        responseSettings.allowedToRespond
-          ? message.channel.id === chattyChannelId
-            ? generateResponse(message, false, false)
-            : generateResponse(message, false, false, messageText)
-          : console.log('Suppressed in this category.');
+    if (randomPick < chanceEval && !(randomPick < config.crimMsgChance)) {
+      console.log('Feeling chatty! Speaking up...');
+      const messageText = message.content.toLowerCase().split(' ');
+      if (responseSettings.allowedToRespond) {
+        if (message.channel.id === chattyChannelId) {
+          generateResponse(message, false, false);
+        } else {
+          generateResponse(message, false, false, messageText);
+        }
+      } else {
+        console.log('Suppressed in this category.');
       }
     }
 
@@ -350,9 +357,10 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
 }
 
 client.on('message', message => {
-  if (message.guild) {
+  if (message.guild && !message.author.bot) {
     const command = validateMessage(message);
     const responseSettings = getResponseSettings(message, chattyChannelId);
+
     if (command === 'help') {
       message.channel.send({ embed: helpEmbed }).catch(() => {
         message.author.send({ embed: helpEmbed });
@@ -408,7 +416,6 @@ client.on('message', message => {
     }
     if (command === 'force') {
       const messageText = message.content.toLowerCase();
-      const split = messageText.split(' ');
       const force = messageText.substring(12);
       const substrings = removeCommonWords(force.split(' '), common).filter(Boolean);
       console.log('Topics: ', substrings);

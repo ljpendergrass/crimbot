@@ -4,7 +4,7 @@ import { MarkbotConfig } from './interface';
 /**
  * Loads the config settings from disk
  */
-let token = 'missing';
+const token = 'missing';
 let loadConfig: MarkbotConfig;
 try {
   loadConfig = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
