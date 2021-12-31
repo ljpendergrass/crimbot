@@ -2,6 +2,7 @@
 import * as Discord from 'discord.js';
 import Markov, { MarkovGenerateOptions } from 'markov-strings';
 import * as fs from 'fs';
+import axios from 'axios';
 import { config } from './config';
 import { MarkbotMarkovResult, ResponseSettings } from './interface';
 
@@ -151,6 +152,42 @@ export function generateMarkovString() {
     console.log(err);
     return 'Error generating string!';
   }
+}
+
+export async function generateMeme(text1: string, text2: string) {
+  const imgFlipUrl = 'https://api.imgflip.com/caption_image';
+  const imgflipTemplates = JSON.parse(fs.readFileSync('src/lib/imgflip-templates.json', 'utf8'));
+  const template = imgflipTemplates[Math.floor(Math.random() * imgflipTemplates.length)];
+
+  let reply = '';
+  await axios
+    .post(
+      imgFlipUrl,
+      {},
+      {
+        params: {
+          username: config.imgFlipUsername,
+          password: config.imgFlipPassword,
+          template_id: template,
+          text0: text1,
+          text1: text2,
+        },
+      }
+    )
+    .then((res: any) => {
+      const response = res.data;
+      if (response.success) {
+        reply = response.data.url;
+      } else {
+        reply = "Got a generated response, but didn't get a url! This shouldn't really happen.";
+      }
+    })
+    .catch((error: any) => {
+      // handle error
+      console.log(error);
+      reply = 'There was an error!';
+    });
+  return reply;
 }
 
 export const helpEmbed = {

@@ -6,12 +6,11 @@ import * as fs from 'fs';
 import Markov, { MarkovConstructorOptions, MarkovGenerateOptions } from 'markov-strings';
 import * as schedule from 'node-schedule';
 import * as common from 'common-words';
-import FormData from 'form-data';
-import axios from 'axios';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
 import {
   generateMarkovString,
+  generateMeme,
   getResponseSettings,
   helpEmbed,
   hoursToTimeoutInMs,
@@ -23,9 +22,6 @@ import {
 } from './lib/util';
 
 export const client = new Discord.Client();
-
-const imgFlipUrl = 'https://api.imgflip.com/caption_image';
-const imgflipTemplates = JSON.parse(fs.readFileSync('src/lib/imgflip-templates.json', 'utf8'));
 
 let channelSend: Discord.TextChannel;
 const errors: string[] = [];
@@ -145,7 +141,7 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
   console.log(`Trained from ${historyCache.length} past human authored messages.`);
   messageCache = messageCache.concat(historyCache);
   regenMarkov();
-  message.reply(`Finished training from past ${historyCache.length} messages.`);
+  await message.reply(`Finished training from past ${historyCache.length} messages.`);
 }
 
 async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
@@ -212,7 +208,7 @@ async function fetchMessagesByChannel(message: Discord.Message): Promise<void> {
   console.log(`Trained from ${historyCache.length} past human authored messages.`);
   messageCache = messageCache.concat(historyCache);
   regenMarkov();
-  message.reply(`Finished training from past ${historyCache.length} messages.`);
+  await message.reply(`Finished training from past ${historyCache.length} messages.`);
 }
 
 /**
@@ -310,7 +306,7 @@ client.on('error', err => {
   });
 });
 
-function indirectResponse(responseSettings: ResponseSettings, message: Discord.Message) {
+async function indirectResponse(responseSettings: ResponseSettings, message: Discord.Message) {
   const randomPick = Math.random();
   console.log('Listening...', responseSettings);
   if (!message.author.bot) {
@@ -328,7 +324,7 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
       const messageSend =
         crimMessages.messages[Math.floor(Math.random() * crimMessages.messages.length)];
       if (responseSettings.allowedToRespond) {
-        message.channel.send(prefixMessage(messageSend));
+        await message.channel.send(prefixMessage(messageSend));
       } else {
         console.log('Suppressed in this category.');
       }
@@ -356,12 +352,18 @@ function indirectResponse(responseSettings: ResponseSettings, message: Discord.M
     }
     messageCache.push(dbObj);
     if (message.isMentioned(client.user)) {
-      generateResponse(message);
+      if (randomPick < config.crimMsgChance) {
+        const text1 = generateMarkovString();
+        const text2 = generateMarkovString();
+        await message.channel.send(await generateMeme(text1, text2));
+      } else {
+        generateResponse(message);
+      }
     }
   }
 }
 
-client.on('message', message => {
+client.on('message', async message => {
   if (message.guild && !message.author.bot) {
     const command = validateMessage(message);
     const responseSettings = getResponseSettings(message, chattyChannelId);
@@ -378,60 +380,31 @@ client.on('message', message => {
           messages: [],
         };
         fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
-        fetchMessages(message);
+        await fetchMessages(message);
       } else {
-        message.channel.send('Sorry, that command is restricted.');
+        await message.channel.send('Sorry, that command is restricted.');
       }
     }
     // eslint-disable-next-line no-empty
     if (command === 'meme') {
-      message.react('🤔');
+      await message.react('🤔');
 
       const text1 = generateMarkovString();
       const text2 = generateMarkovString();
-      const template = imgflipTemplates[Math.floor(Math.random() * imgflipTemplates.length)];
-
-      axios
-        .post(
-          imgFlipUrl,
-          {},
-          {
-            params: {
-              username: config.imgFlipUsername,
-              password: config.imgFlipPassword,
-              template_id: template,
-              text0: text1,
-              text1: text2,
-            },
-          }
-        )
-        .then((res: any) => {
-          // handle success
-          console.log(res.data);
-          if (res.data.success) {
-            message.channel.send(res.data.data.url);
-          }
-        })
-        .catch((error: any) => {
-          // handle error
-          console.log(error);
-        })
-        .then(() => {
-          // always executed
-        });
+      await message.channel.send(await generateMeme(text1, text2));
     }
     if (command === 'fullscan') {
       console.log('doing fullscan');
-      message.channel.send('Scanning...');
+      await message.channel.send('Scanning...');
       if (message.author.id === '239610853811421185') {
         console.log('Oh god, here goes nothing.');
         fileObj = {
           messages: [],
         };
         fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
-        fetchMessagesByChannel(message);
+        await fetchMessagesByChannel(message);
       } else {
-        message.channel.send('Sorry, that command is restricted.');
+        await message.channel.send('Sorry, that command is restricted.');
       }
     }
     if (command === 'respond') {
@@ -457,27 +430,29 @@ client.on('message', message => {
       const arg = message.content.substring(13);
       if (arg === 'off') {
         chattyChannelId = '';
-        message.channel.send('No longer being chatty in requested channel, if there was one.');
+        await message.channel.send(
+          'No longer being chatty in requested channel, if there was one.'
+        );
       } else {
         const channelRequested = client.channels.get(
           message.content.substring(13)
         ) as Discord.TextChannel;
 
         if (channelRequested !== undefined) {
-          message.channel.send(`Updating Crim's Chatty Channel to ${channelRequested.name}`);
+          await message.channel.send(`Updating Crim's Chatty Channel to ${channelRequested.name}`);
           chattyChannelId = arg;
         } else {
-          message.react('❌');
+          await message.react('❌');
         }
       }
     }
     if (command === 'pick') {
       const options = message.content.substring(11).split(/\s+[o|O][r|R]\s+/gm);
       const pickRandom = options[Math.floor(Math.random() * options.length)];
-      message.channel.send(`I choose ${pickRandom}`);
+      await message.channel.send(`I choose ${pickRandom}`);
     }
     if (command === null) {
-      indirectResponse(responseSettings, message);
+      await indirectResponse(responseSettings, message);
     }
   }
 });
