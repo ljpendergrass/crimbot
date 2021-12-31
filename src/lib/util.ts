@@ -101,7 +101,7 @@ export function getResponseSettings(
   chattyChannelId: string
 ): ResponseSettings {
   const channel = message.channel as Discord.TextChannel;
-  const parentName = channel.parent.name;
+  const parentName = channel.parent ? channel.parent.name : '';
   const settings: ResponseSettings = {
     allowedToRespond: true,
     increasedChance: message.channel.id === chattyChannelId,
@@ -110,8 +110,12 @@ export function getResponseSettings(
   if (parentName !== config.suppressRespCat && parentName !== config.increaseFreqCat) {
     return settings;
   }
-  parentName === config.suppressRespCat ? (settings.allowedToRespond = false) : null;
-  parentName === config.increaseFreqCat ? (settings.increasedChance = true) : null;
+  if (parentName === config.suppressRespCat || parentName === '') {
+    settings.allowedToRespond = false;
+  }
+  if (parentName === config.increaseFreqCat) {
+    settings.increasedChance = true;
+  }
   return settings;
 }
 
