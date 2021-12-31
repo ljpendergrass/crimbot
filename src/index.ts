@@ -7,9 +7,11 @@ import Markov, { MarkovConstructorOptions, MarkovGenerateOptions } from 'markov-
 import * as schedule from 'node-schedule';
 import * as common from 'common-words';
 import FormData from 'form-data';
+import axios from 'axios';
 import { MarkbotMarkovResult, MessageRecord, MessagesDB, ResponseSettings } from './lib/interface';
 import { config } from './lib/config';
 import {
+  generateMarkovString,
   getResponseSettings,
   helpEmbed,
   hoursToTimeoutInMs,
@@ -21,6 +23,9 @@ import {
 } from './lib/util';
 
 export const client = new Discord.Client();
+
+const imgFlipUrl = 'https://api.imgflip.com/caption_image';
+const imgflipTemplates = JSON.parse(fs.readFileSync('src/lib/imgflip-templates.json', 'utf8'));
 
 let channelSend: Discord.TextChannel;
 const errors: string[] = [];
@@ -275,7 +280,7 @@ function generateResponse(
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
     message.channel.stopTyping();
   } catch (err) {
-    message.react('688964665531039784');
+    message.react('thinking');
     message.channel.stopTyping();
 
     console.log(err);
@@ -378,15 +383,42 @@ client.on('message', message => {
         message.channel.send('Sorry, that command is restricted.');
       }
     }
-    if (command === 'test') {
-      const channelsToScan = [] as Array<string>;
-      message.guild.channels.forEach(value => {
-        if (value.type === 'text' && value.name === 'general') {
-          console.log(value);
-          channelsToScan.push(value.id);
-        }
-      });
-      console.log();
+    // eslint-disable-next-line no-empty
+    if (command === 'meme') {
+      message.react('🤔');
+
+      const text1 = generateMarkovString();
+      const text2 = generateMarkovString();
+      const template = imgflipTemplates[Math.floor(Math.random() * imgflipTemplates.length)];
+
+      axios
+        .post(
+          imgFlipUrl,
+          {},
+          {
+            params: {
+              username: config.imgFlipUsername,
+              password: config.imgFlipPassword,
+              template_id: template,
+              text0: text1,
+              text1: text2,
+            },
+          }
+        )
+        .then((res: any) => {
+          // handle success
+          console.log(res.data);
+          if (res.data.success) {
+            message.channel.send(res.data.data.url);
+          }
+        })
+        .catch((error: any) => {
+          // handle error
+          console.log(error);
+        })
+        .then(() => {
+          // always executed
+        });
     }
     if (command === 'fullscan') {
       console.log('doing fullscan');

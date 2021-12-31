@@ -24,7 +24,9 @@ try {
     randomMsgChance: 4 / 100,
     crimMsgChance: 1 / 200,
     token: process.env.TOKEN || token,
-    pageSize: 100,
+    pageSize: 200,
+    imgFlipUsername: 'null',
+    imgFlipPassword: 'null',
   };
 }
 
@@ -43,4 +45,6 @@ export const config: MarkbotConfig = {
   crimMsgChance: loadConfig.crimMsgChance || 1 / 200,
   token: loadConfig.token || process.env.TOKEN || token,
   pageSize: loadConfig.pageSize || 100,
+  imgFlipUsername: loadConfig.imgFlipUsername || 'null',
+  imgFlipPassword: loadConfig.imgFlipPassword || 'null',
 };

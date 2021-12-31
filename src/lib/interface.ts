@@ -29,6 +29,8 @@ export interface MarkbotConfig {
   crimMsgChance: number;
   token: string;
   pageSize: number;
+  imgFlipUsername: string;
+  imgFlipPassword: string;
 }
 
 export interface ResponseSettings {

@@ -1,6 +1,9 @@
+/* eslint-disable no-console */
 import * as Discord from 'discord.js';
+import Markov, { MarkovGenerateOptions } from 'markov-strings';
+import * as fs from 'fs';
 import { config } from './config';
-import { ResponseSettings } from './interface';
+import { MarkbotMarkovResult, ResponseSettings } from './interface';
 
 export function prefixMessage(message: string) {
   return config.messagePrefix.concat(' ', message);
@@ -73,6 +76,7 @@ export function validateMessage(message: Discord.Message): string | null {
     'test',
     'chatty',
     'pick',
+    'meme',
   ]);
   const thisPrefix = messageText.substring(0, config.prefix.length);
   if (thisPrefix === config.prefix) {
@@ -117,6 +121,36 @@ export function getResponseSettings(
     settings.increasedChance = true;
   }
   return settings;
+}
+
+export function generateMarkovString() {
+  console.log('Generating arbitrary markov string...');
+  const options: MarkovGenerateOptions = {
+    filter: (result): boolean => {
+      return (
+        result.score >= config.minScore &&
+        result.refs.length >= 2 &&
+        result.string.split(' ').length <= 15
+      );
+    },
+    maxTries: config.maxTries,
+  };
+  const fsMarkov = new Markov([''], {
+    stateSize: config.stateSize,
+  });
+  const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
+  fsMarkov.corpus = markovFile.corpus;
+  fsMarkov.startWords = markovFile.startWords;
+  fsMarkov.endWords = markovFile.endWords;
+
+  try {
+    const myResult = fsMarkov.generate(options) as MarkbotMarkovResult;
+    console.log('Generated Result:', myResult);
+    return myResult.string;
+  } catch (err) {
+    console.log(err);
+    return 'Error generating string!';
+  }
 }
 
 export const helpEmbed = {
